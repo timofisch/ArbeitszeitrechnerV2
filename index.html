@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset='utf-8'>
+        <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+        <title>Page Title</title>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+    </head>
+    <body id="imgTest">
+        <div id="wrapper">
+            <span></span>
+            <div>
+                <label for="inputFileToLoad" class="custom-file-upload">
+                    <span>Hintergrundbild wählen</span>
+                </label>
+                <input id="inputFileToLoad" type="file" onchange="encodeImageFileAsURL()"/>
+            </div>
+            <button onclick="clearBackground()">Hintergrund zurücksetzen</button>
+        </div>
+    </body>
+</html>
+
+<style>
+    html {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    body {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+        background-color: rgba(50, 50, 50, 1);
+        /*  background-size: auto|length|cover|contain;   */
+        /*   background-repeat: repeat|repeat-x|repeat-y|no-repeat;   */
+    }
+
+    #wrapper {
+        width: 700px;
+        height: 500px;
+        margin-left: calc(50% - 350px);
+        margin-top: 30px;
+        background-color: rgba(255, 255, 255, 0.5);
+        text-align: center;
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+
+    .custom-file-upload {
+        border: 1px solid #ccc;
+        display: inline-block;
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+</style>
+
+<script type='text/javascript'>
+    //lsk = Local storage key
+    const lskBackgroundImg = `background_base64`
+    const lskBackgroundMode = `background_mode`
+    
+    setBackground()
+
+    function encodeImageFileAsURL() {
+        const filesSelected = document.getElementById("inputFileToLoad").files;
+        
+        if (filesSelected.length > 0) {
+            const fileToLoad = filesSelected[0];
+
+            const fileReader = new FileReader();
+
+            fileReader.onload = function(fileLoadedEvent) {
+                const srcData = fileLoadedEvent.target.result // <--- data: base64 string
+
+                localStorage.setItem(lskBackgroundImg, srcData)
+                setBackground()
+            }
+
+            fileReader.readAsDataURL(fileToLoad);
+        }
+    }
+
+    function setBackground() {
+        if(localStorage.getItem(lskBackgroundImg)) {
+            document.body.style.backgroundImage = `url('${localStorage.getItem(lskBackgroundImg)}')`
+            console.log("Background set")
+        }
+    }
+
+    function clearBackground() {
+        if(localStorage.getItem(lskBackgroundImg)) {
+            localStorage.removeItem(lskBackgroundImg)
+            document.body.style.backgroundImage = ``
+            location.reload()
+        }
+    }
+</script>
