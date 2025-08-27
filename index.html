@@ -65,300 +65,213 @@
 </div>
 
 <script>
-    const defaultWorkTime = 27360
-	const defaultPauseTime = 1800
-	const maxWorkTime = 36000
-	const minPause6 = 1800 //min pause time for 6h
-	const minPause10 = 2700 //min pause time for 10h
-	
-	const lskArrival = `time_arrival`
-	const lskOvertime = `time_overtime`
-	const lskTimeUpdated = `time_lastUpdated`
-	
-	const lskBackgroundImg = `background_base64`
-	const lskBackgroundMode = `background_mode`
-	
-	function Time(e) {
-        this.seconds = e % 60, this.minutes = e >= 0 ? Math.floor(e % 3600 / 60) : Math.ceil(e % 3600 / 60), this
-            .hours = e >= 0 ? Math.floor(e / 3600) : Math.ceil(e / 3600), this.totalSeconds = e, this.getHours =
-            function () {
-                return this.hours
-            }, this.getMinutes = function () {
-                return this.minutes
-            }, this.getSeconds = function () {
-                return this.seconds
-            }, this.getTotalSeconds = function () {
-                return this.totalSeconds
-            }, this.addSeconds = function (e) {
-                this.totalSeconds += e, this.recalculate()
-            }, this.addMinutes = function (e) {
-                this.totalSeconds += 60 * e, this.recalculate()
-            }, this.addHours = function (e) {
-                this.totalSeconds += 3600 * e, this.recalculate()
-            }, this.subtractSeconds = function (e) {
-                this.totalSeconds -= e, this.recalculate()
-            }, this.subtractMinutes = function (e) {
-                this.totalSeconds -= 60 * e, this.recalculate()
-            }, this.subtractHours = function (e) {
-                this.totalSeconds -= 3600 * e, this.recalculate()
-            }, this.recalculate = function () {
-                this.seconds = this.totalSeconds % 60, this.minutes = this.totalSeconds >= 0 ? Math.floor(this
-                        .totalSeconds % 3600 / 60) : Math.ceil(this.totalSeconds % 3600 / 60), this.hours = this
-                    .totalSeconds >= 0 ? Math.floor(this.totalSeconds / 3600) : Math.ceil(this.totalSeconds / 3600)
-            }, this.toString = function () {
-                var e = this.totalSeconds < 0,
-                    t = e ? -this.getSeconds() : this.getSeconds();
-                return t = t < 10 ? "0" + t : t, this.toShortString() + ":" + t
-            }, this.toShortString = function () {
-                var e = this.totalSeconds < 0,
-                    t = e ? -this.getHours() : this.getHours(),
-                    n = e ? -this.getMinutes() : this.getMinutes();
-                return t = t < 10 ? "0" + t : t, n = n < 10 ? "0" + n : n, e = e ? "-" : "", e + t + ":" + n
-            }, this.reset = function () {
-                this.totalSeconds = 0, this.recalculate()
+    const DEFAULT_WORK_TIME = 27360;   // 7,6h
+    const MAX_WORK_TIME = 36000;       // 10h
+    const MIN_PAUSE_6H = 1800;         // 30min
+    const MIN_PAUSE_10H = 2700;        // 45min
+    const LATEST_WORK_HOUR = 20;
+    const EARLIEST_WORK_HOUR = 6;
+
+    // LocalStorage Keys
+    const LS_ARRIVAL = "time_arrival";
+    const LS_OVERTIME = "time_overtime";
+    const LS_BACKGROUND_IMG = "background_base64";
+    const LS_BACKGROUND_MODE = "background_mode";
+    const LS_BACKGROUND_REPEAT = "background_repeat";
+
+    // ------------------ Zeitklasse ------------------
+    class Time {
+        constructor(seconds = 0) {
+            this.totalSeconds = seconds;
+            this.recalculate();
+        }
+
+        recalculate() {
+            this.seconds = Math.abs(this.totalSeconds) % 60;
+            this.minutes = Math.floor(Math.abs(this.totalSeconds) % 3600 / 60);
+            this.hours = Math.floor(Math.abs(this.totalSeconds) / 3600);
+            if (this.totalSeconds < 0) {
+                this.hours *= -1;
+                this.minutes *= -1;
+                this.seconds *= -1;
             }
+        }
+
+        addSeconds(sec) { this.totalSeconds += sec; this.recalculate(); }
+        addMinutes(min) { this.addSeconds(min * 60); }
+        addHours(h) { this.addSeconds(h * 3600); }
+        subtractSeconds(sec) { this.addSeconds(-sec); }
+        subtractMinutes(min) { this.addMinutes(-min); }
+        subtractHours(h) { this.addHours(-h); }
+
+        reset() { this.totalSeconds = 0; this.recalculate(); }
+
+        toShortString() {
+            const neg = this.totalSeconds < 0 ? "-" : "";
+            const h = String(Math.abs(this.hours)).padStart(2, "0");
+            const m = String(Math.abs(this.minutes)).padStart(2, "0");
+            return `${neg}${h}:${m}`;
+        }
+
+        toString() {
+            const s = String(Math.abs(this.seconds)).padStart(2, "0");
+            return `${this.toShortString()}:${s}`;
+        }
+
+        getTotalSeconds() { return this.totalSeconds; }
     }
 
+    // ------------------ Globale Variablen ------------------
+    let WORK_TIME, pauseTime, effectiveWorkTime, MAX_OVERTIME;
+    let arrival = new Time(0);
+    let overtime = new Time(0);
+    let timerId, overtimerId;
+
+    // ------------------ Init ------------------
+    window.addEventListener("load", onLoad);
+
     function onLoad() {
-        reset(), WORK_TIME = new Time(defaultWorkTime), pauseTime = new Time(1800), effectiveWorkTime = new Time(pauseTime
-                .getTotalSeconds() + WORK_TIME.getTotalSeconds()), MAX_OVERTIME = new Time(maxWorkTime - defaultWorkTime), document
-            .getElementById("arrival").onkeyup = startTimer, document.getElementById("overtime").onkeyup = startTimer,
-            document.getElementById("pausetime").onmousedown = sliderChanged, document.getElementById("pausetime")
-            .onmousemove = sliderChanged, document.getElementById("pausetime").onmouseup = sliderChanged,
-            pullBackground()
-		
-		document.getElementById("arrival").value = localStorage.getItem(lskArrival)
-		document.getElementById("overtime").value = localStorage.getItem(lskOvertime)
+        reset();
+
+        WORK_TIME = new Time(DEFAULT_WORK_TIME);
+        pauseTime = new Time(MIN_PAUSE_6H);
+        effectiveWorkTime = new Time(pauseTime.getTotalSeconds() + WORK_TIME.getTotalSeconds());
+        MAX_OVERTIME = new Time(MAX_WORK_TIME - DEFAULT_WORK_TIME);
+
+        // Input Events
+        document.getElementById("arrival").addEventListener("keyup", startTimer);
+        document.getElementById("overtime").addEventListener("keyup", startTimer);
+        //document.getElementById("pausetime").addEventListener("input", sliderChanged);
+
+        // Background laden
+        pullBackground();
+
+        // Werte aus LocalStorage laden
+        document.getElementById("arrival").value = localStorage.getItem(LS_ARRIVAL) || "";
+        document.getElementById("overtime").value = localStorage.getItem(LS_OVERTIME) || "";
+        document.getElementById("backgroundMode").value = localStorage.getItem(LS_BACKGROUND_MODE) || "auto";
+        document.getElementById("backgroundRepeat").value = localStorage.getItem(LS_BACKGROUND_REPEAT) || "no-repeat";
+    }
+
+    // ------------------ Hintergrund ------------------
+    function pullBackground() {
+        const img = localStorage.getItem(LS_BACKGROUND_IMG);
+        if (img) document.body.style.backgroundImage = `url('${img}')`;
+
+        const mode = localStorage.getItem(LS_BACKGROUND_MODE);
+        if (mode) document.body.style.backgroundSize = mode;
+
+        const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT);
+        if (repeat) document.body.style.backgroundRepeat = repeat;
+    }
+
+    function backgroundModeChanged() {
+        localStorage.setItem(LS_BACKGROUND_MODE, document.getElementById("backgroundMode").value);
+        localStorage.setItem(LS_BACKGROUND_REPEAT, document.getElementById("backgroundRepeat").value);
+        pullBackground();
+    }
+
+    function resetBackground() {
+        localStorage.removeItem(LS_BACKGROUND_IMG);
+        localStorage.removeItem(LS_BACKGROUND_MODE);
+        localStorage.removeItem(LS_BACKGROUND_REPEAT);
+        location.reload();
+    }
+
+    function encodeImageFileAsURL() {
+        const file = document.getElementById("inputFileToLoad").files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = e => {
+            localStorage.setItem(LS_BACKGROUND_IMG, e.target.result);
+            pullBackground();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ------------------ Timer Logik ------------------
+    function startTimer() {
+        reset();
+        const validArrival = validateArrivalTime(document.getElementById("namehelp"));
+        const validOvertime = validateOvertime(document.getElementById("overtimehelp"));
+
+        if (validArrival && validOvertime) {
+            document.getElementById("pauseinput").textContent = pauseTime.toShortString();
+            pauseChanged();
+        }
     }
 
     function pauseChanged() {
-        if (clearInterval(timerId), clearInterval(overtimerId), document.getElementById("pausetime").disabled = !1,
-            validatePauseTime(document.getElementById("pausewarning")) !== !1) {
-            document.getElementById("progressbar").style.visibility = "visible", effectiveWorkTime = new Time(pauseTime
-                .getTotalSeconds() + WORK_TIME.getTotalSeconds());
-            var e = new Time(arrival.getTotalSeconds() + overtime.getTotalSeconds() + effectiveWorkTime
-                .getTotalSeconds()),
-                t = e.toShortString();
-            return e.getTotalSeconds() > 86400 ? document.getElementById("endtime").innerHTML = ">24:00" : document
-                .getElementById("endtime").innerHTML = t + " Uhr", document.getElementById("worktime").innerHTML =
-                new Time(WORK_TIME.getTotalSeconds() + overtime.getTotalSeconds()).toShortString(), validatePauseTime(
-                    document.getElementById("pausewarning")), e.getTotalSeconds() > 3600 * LATEST_WORK_HOUR ?
-                void updateHelpText(document.getElementById("toolatewarning"), HELP_TEXT_TOO_LATE, !0) : void(
-                    timer_tick(e) || (timerId = setInterval(function () {
-                        timer_tick(e)
-                    }, 1e3)))
+        clearInterval(timerId);
+        clearInterval(overtimerId);
+
+        const warningElem = document.getElementById("pausewarning");
+        if (!validatePauseTime(warningElem)) return;
+
+        effectiveWorkTime = new Time(pauseTime.getTotalSeconds() + WORK_TIME.getTotalSeconds());
+
+        const endTime = new Time(arrival.getTotalSeconds() + overtime.getTotalSeconds() + effectiveWorkTime.getTotalSeconds());
+
+        document.getElementById("endtime").textContent =
+            endTime.getTotalSeconds() > 86400 ? ">24:00" : `${endTime.toShortString()} Uhr`;
+
+        document.getElementById("worktime").textContent =
+            new Time(WORK_TIME.getTotalSeconds() + overtime.getTotalSeconds()).toShortString();
+
+        if (endTime.getTotalSeconds() > LATEST_WORK_HOUR * 3600) {
+            updateHelpText(document.getElementById("toolatewarning"), HELP_TEXT_TOO_LATE, true);
+            return;
         }
+
+        timer_tick(endTime);
+        timerId = setInterval(() => timer_tick(endTime), 1000);
     }
 
-	function pullBackground() {
-		if(localStorage.getItem(lskBackgroundImg)) {
-            document.body.style.backgroundImage = `url('${localStorage.getItem(lskBackgroundImg)}')`
-            //console.log("Background set")
-        }
-	}
-	
-	function backgroundModeChanged() {
-		document.body.style.backgroundSize = document.getElementById("backgroundMode").value
-	}
-
-    function startTimer() {
-		reset(), validateArrivalTime(document.getElementById("namehelp")) === !1 | validateOvertime(document
-            .getElementById("overtimehelp")) === !1 || (document.getElementById("pauseinput").innerHTML = pauseTime
-            .toShortString(), pauseChanged())
-    }
-
-    function timer_tick(e) {
-        var t = new Time(0),
-            n = new Date,
-            i = new Time(3600 * n.getHours() + 60 * n.getMinutes() + n.getSeconds());
-        t.addSeconds(e.getTotalSeconds() - i.getTotalSeconds());
-        var o = t.getTotalSeconds(),
-            d = effectiveWorkTime.getTotalSeconds() + overtime.getTotalSeconds(),
-            s = Math.floor(100 - o / d * 100),
-            r = t.toString();
-        return document.getElementById("countdown").innerHTML = r, document.getElementById("ttle").innerHTML = r +
-            " | " + s + "%", document.getElementById("progressbar").style.right = 100 - s + "%", document
-            .getElementById("percentnumber").innerHTML = s + "%", t.getTotalSeconds() < 1 && (document.getElementById(
-                    "percentnumber").innerHTML = "100%", document.getElementById("countdown").classList.add("pulse"),
-                document.getElementById("countdown").innerHTML = "Feierabend", document.getElementById("part1")
-                .classList.add("endarkenpart1"), document.getElementById("frame").classList.add("enlightenframe"),
-                document.getElementById("ttle").innerHTML = "Feierabend", clearInterval(overtimerId),
-                overtimeCounter_tick(new Time(e.getTotalSeconds() - overtime.getTotalSeconds())), overtimerId =
-                setInterval(function () {
-                    overtimeCounter_tick(new Time(e.getTotalSeconds() - overtime.getTotalSeconds()))
-                }, 1e3)), !1
-    }
-
-    function overtimeCounter_tick(e) {
-        var t = new Time(0),
-            n = new Date,
-            i = new Time(3600 * n.getHours() + 60 * n.getMinutes() + n.getSeconds());
-        t.addSeconds(e.getTotalSeconds() - i.getTotalSeconds()), t.subtractSeconds(2 * t.getTotalSeconds());
-        var o = t.toString();
-        document.getElementById("overtimecounter").innerHTML = o
-    }
-
-    function validateArrivalTime(e) {
-        var t = document.getElementById("arrival").value;
-        if (/^[\d]{3}$/.test(t) ? (t = t.splice(1, 0, ":"), document.getElementById("arrival").value = t) :
-            /^([\d]{4}|\d:[\d]{3})$/.test(t) && (t = t.replace(":", ""), t = t.splice(2, 0, ":"), document
-                .getElementById("arrival").value = t), "" == t) return e.innerHTML = "", !1;
-        if (/^[\d]{1,2}:?[\d]{2}$/.test(t)) {
-            arrival.reset();
-            var n = t.split(":")[1],
-                i = t.split(":")[0];
-            return n = parseInt(n), i = parseInt(i), arrival.addMinutes(n), arrival.addHours(i), n > 59 ? (
-                updateHelpText(e, HELP_TEXT_ARRIVAL, !0), !1) : i > 23 ? (updateHelpText(e, HELP_TEXT_ARRIVAL, !0),
-                !1) : i < 6 ? (updateHelpText(e, HELP_TEXT_TOO_EARLY, !0), !1) : (updateHelpText(e, "", !1), !0)
-        }
-        return updateHelpText(e, HELP_TEXT_ARRIVAL, !0), !1
-    }
-
-    function validateOvertime(e) {
-        var t = document.getElementById("overtime").value;
-        if (/^(^-)?[\d]{3}$/.test(t) ? (t = "-" == t.charAt(0) ? t.splice(2, 0, ":") : t.splice(1, 0, ":"), document
-                .getElementById("overtime").value = t) : /^(^-)?([\d]{4}|\d:[\d]{3})$/.test(t) && (t = t.replace(":",
-                ""), t = "-" == t.charAt(0) ? t.splice(3, 0, ":") : t.splice(2, 0, ":"), document.getElementById(
-                "overtime").value = t), /^(^-)?[\d]{1,2}(:?[\d]{2})?$/.test(t) || "" == t) {
-            if ("" == t) return e.innerHTML = "", overtime.reset(), !0;
-            overtime.reset();
-            var n = 0,
-                i = 0;
-            return null == t.split(":")[1] ? (i = 0, n = t) : (n = t.split(":")[1], i = t.split(":")[0]), n > 59 ? (
-                updateHelpText(e, HELP_TEXT_OVERTIME, !0), !1) : (i = parseInt(i), n = parseInt(n), "-" == t.charAt(
-                    0) && (i = neg(i), n = neg(n)), overtime.addHours(i), overtime.addMinutes(n), overtime
-                .getTotalSeconds() > MAX_OVERTIME.getTotalSeconds() ? (updateHelpText(e,
-                    HELP_TEXT_TOO_MUCH_OVERTIME, !0), !1) : overtime.getTotalSeconds() < WORK_TIME
-            .getTotalSeconds() * -1 ? (updateHelpText(e, HELP_TEXT_TOO_FEW_OVERTIME, !0), !1) : (updateHelpText(e,
-                    "", !1), !0))
-        }
-        return updateHelpText(e, HELP_TEXT_OVERTIME, !0), !1
-    }
-
-    function validatePauseTime(e) {
-        var t = new Time(overtime.getTotalSeconds() + WORK_TIME.getTotalSeconds()),
-            n = t.getTotalSeconds() / 3600 > 6 ? 30 : 0,
-            i = document.getElementById("pauseinput").innerHTML;
-        if (/^[\d]{3}$/.test(i) ? (i = i.splice(1, 0, ":"), document.getElementById("pauseinput").innerHTML = i) :
-            /^([\d]{4}|\d:[\d]{3})$/.test(i) && (i = i.replace(":", ""), i = i.splice(2, 0, ":"), document
-                .getElementById("pauseinput").innerHTML = i), /^[\d]{1,2}(:?[\d]{2})?$/.test(i)) {
-            var o, d;
-            return null == i.split(":")[1] ? (o = 0, d = i) : (d = i.split(":")[1], o = i.split(":")[0]), d > 59 ? (
-                updateHelpText(e, HELP_TEXT_PAUSE, !0), !1) : (pauseTime.reset(), pauseTime.addMinutes(d), pauseTime
-                .addHours(o), pauseTime.getMinutes() + 60 * pauseTime.getHours() < n ? (updateHelpText(e,
-                    "Eine Pausenzeit von " + n + " Minuten darf nicht unterschritten werden.", !0), !1) : (
-                    updateHelpText(e, "", !1), document.getElementById("pausetime").value = 60 * pauseTime
-                    .getHours() + pauseTime.getMinutes(), !0))
-        }
-        return updateHelpText(e, HELP_TEXT_PAUSE, !0), !1
-    }
-
-    function sliderChanged() {
-        if (1 != document.getElementById("pausetime").disabled) {
-            var e = document.getElementById("pausetime").value < 10 ? "0" + document.getElementById("pausetime").value :
-                document.getElementById("pausetime").value;
-            document.getElementById("pauseinput").innerHTML = "00:" + e, pauseChanged()
-        }
-    }
-
+    // ------------------ Reset ------------------
     function reset() {
-        for (document.getElementById("countdown").innerHTML = "00:00:00", document.getElementById("endtime").innerHTML =
-            "", document.getElementById("progressbar").style.visibility = "hidden", document.getElementById(
-                "percentnumber").innerHTML = "", document.getElementById("ttle").innerHTML = "Arbeitszeitrechner",
-            document.getElementById("toolatewarning").innerHTML = "", document.getElementById("worktime").innerHTML =
-            "", document.getElementById("overtimecounter").innerHTML = "", document.getElementById("pauseinput")
-            .innerHTML = "", document.getElementById("pausetime").disabled = !0, document.getElementById("pausewarning")
-            .innerHTML = "", i = 0; i < document.getElementsByClassName("helptext").length; i++) document
-            .getElementsByClassName("helptext")[i].classList.add("helptextgreen");
-        clearInterval(timerId), clearInterval(overtimerId), document.getElementById("part1").classList.remove(
-                "endarkenpart1"), document.getElementById("frame").classList.remove("enlightenframe"), document
-            .getElementById("countdown").classList.remove("pulse")
-    }
-	
-	function resetBackground() {
-		if(localStorage.getItem(lskBackgroundImg)) {
-			localStorage.removeItem(lskBackgroundImg)
-			localStorage.removeItem(lskBackgroundMode)
-			location.reload()
-		}
-	}
+        document.getElementById("countdown").textContent = "00:00:00";
+        document.getElementById("endtime").textContent = "";
+        document.getElementById("progressbar").style.visibility = "hidden";
+        document.getElementById("percentnumber").textContent = "";
+        document.getElementById("ttle").textContent = "Arbeitszeitrechner";
+        document.getElementById("toolatewarning").textContent = "";
+        document.getElementById("worktime").textContent = "";
+        document.getElementById("overtimecounter").textContent = "";
+        document.getElementById("pauseinput").textContent = "";
+        document.getElementById("pausetime").disabled = true;
+        document.getElementById("pausewarning").textContent = "";
 
-    function neg(e) {
-        var t;
-        return t = e < 0 ? e : e * -1
+        [...document.getElementsByClassName("helptext")].forEach(el => el.classList.add("helptextgreen"));
+
+        clearInterval(timerId);
+        clearInterval(overtimerId);
+
+        document.getElementById("part1").classList.remove("endarkenpart1");
+        document.getElementById("frame").classList.remove("enlightenframe");
+        document.getElementById("countdown").classList.remove("pulse");
     }
 
-    function updateHelpText(e, t, n) {
-        null != e && (n ? (e.innerHTML = t, e.classList.remove("helptextgreen")) : (e.innerHTML = "✓", e.classList.add(
-            "helptextgreen")))
-    }
-
-    function showInfoBox(e) {
-        document.getElementById("smalladvice").classList.add("smalladvice"), e ? addCursiveText() : removeCursiveText()
-    }
-
-    function addCursiveText() {
-        document.getElementById("smalladvice").innerHTML = "Es wird von einem Soll von " + WORK_TIME.getHours() + ":" +
-            WORK_TIME.getMinutes() + "h ausgegangen. Zusammen mit " + pauseTime.getMinutes() +
-            " Minuten Pause ergibt sich eine Gesamtzeit von " + getTotalTime(effectiveWorkTime.toShortString()) + "h.",
-            document.getElementById("box2").style.visibility = "hidden", document.getElementById("box1").style
-            .backgroundColor = "rgba(255,255,255,.93)"
-    }
-
-    function removeCursiveText() {
-        document.getElementById("smalladvice").innerHTML = "", document.getElementById("box1").style.backgroundColor =
-            "rgba(255,255,255,.5)", document.getElementById("box2").style.visibility = "visible"
-    }
-
-    function showOptions(e) {
-        document.getElementById("smalladvice").classList.add("smalladvice"), e ? addOptions() : removeOptions()
-    }
-
-    function addOptions() {
-        document.getElementById("options").innerHTML =
-            "<Strong>Optionen</strong><br><input type='checkbox' id='option_FA' checked> Feierabendanimation<br><input type='checkbox' id='option_PA' checked> Prozentanzeige<br><input type='checkbox' id='option_FB' checked> Fortschrittsbalken<br><input type='checkbox' id='option_EA' checked> Easter Egg",
-            document.getElementById("box2").style.backgroundColor = "rgba(255,255,255,.93)"
-    }
-
-    function removeOptions() {
-        document.getElementById("options").innerHTML = "", document.getElementById("box2").style.backgroundColor =
-            "rgba(255,255,255,.5)"
-    }
-	
-	function encodeImageFileAsURL() {
-		const filesSelected = document.getElementById("inputFileToLoad").files;
-        
-        if (filesSelected.length > 0) {
-            const fileToLoad = filesSelected[0];
-
-            const fileReader = new FileReader();
-
-            fileReader.onload = function(fileLoadedEvent) {
-                const srcData = fileLoadedEvent.target.result // <--- data: base64 string
-
-                localStorage.setItem(lskBackgroundImg, srcData)
-                pullBackground()
-            }
-
-            fileReader.readAsDataURL(fileToLoad);
+    // ------------------ Hilfsfunktionen ------------------
+    function updateHelpText(elem, text, isError) {
+        if (!elem) return;
+        if (isError) {
+            elem.textContent = text;
+            elem.classList.remove("helptextgreen");
+        } else {
+            elem.textContent = "✓";
+            elem.classList.add("helptextgreen");
         }
     }
-	
-    var HELP_TEXT_ARRIVAL = "Bitte im Format hhmm oder hmm eingeben.",
-        HELP_TEXT_OVERTIME = "Bitte im Format (-)hhmm, (-)hmm oder (-)mm eingeben.",
-        HELP_TEXT_PAUSE = "Bitte im Format hhmm, hmm oder mm eingeben.",
-        HELP_TEXT_TOO_MUCH_OVERTIME = `Mehr als ${new Time(maxWorkTime - defaultWorkTime)}h Überstunden sind nicht zulässig.`,
-        HELP_TEXT_TOO_FEW_OVERTIME = `Mehr als ${new Time(defaultWorkTime)}h abzubauende Stunden sind nicht zulässig.`,
-        HELP_TEXT_TOO_EARLY = "Vor 6:00 Uhr darf nicht begonnen werden.",
-        HELP_TEXT_TOO_LATE = "Es darf nicht länger als bis 20:00 Uhr gearbeitet werden.",
-        WORK_TIME, pauseTime, effectiveWorkTime, MAX_OVERTIME, LATEST_WORK_HOUR = 20,
-        EARLIEST_WORK_HOUR = 6,
-        arrival = new Time(0),
-        overtime = new Time(0),
-        timerId, overtimerId;
-    window.onload = onLoad, String.prototype.splice = function (e, t, n) {
-        return this.slice(0, e) + n + this.slice(e + Math.abs(t))
-    }
+
+    // ------------------ Texte ------------------
+    const HELP_TEXT_ARRIVAL = "Bitte im Format hhmm oder hmm eingeben.";
+    const HELP_TEXT_OVERTIME = "Bitte im Format (-)hhmm, (-)hmm oder (-)mm eingeben.";
+    const HELP_TEXT_PAUSE = "Bitte im Format hhmm, hmm oder mm eingeben.";
+    const HELP_TEXT_TOO_MUCH_OVERTIME = `Mehr als ${new Time(MAX_WORK_TIME - DEFAULT_WORK_TIME)}h Überstunden sind nicht zulässig.`;
+    const HELP_TEXT_TOO_FEW_OVERTIME = `Mehr als ${new Time(DEFAULT_WORK_TIME)}h abzubauende Stunden sind nicht zulässig.`;
+    const HELP_TEXT_TOO_EARLY = "Vor 6:00 Uhr darf nicht begonnen werden.";
+    const HELP_TEXT_TOO_LATE = "Es darf nicht länger als bis 20:00 Uhr gearbeitet werden.";
 </script>
 
 <style>
