@@ -1,0 +1,823 @@
+﻿<!DOCTYPE html>
+<meta charset=utf-8>
+<title id=ttle>Arbeitszeitrechner</title>
+<link href='http://fonts.googleapis.com/css?family=Open+Sans:400,300' rel='stylesheet' type='text/css'>
+<!--[if lt IE 10]><script type="text/javascript">window.onload = function() {window.open("iesucks.htm", "_self");}</script><![endif]-->
+
+<div id=wrapper1>
+    <section id=part1>
+        <div id=frame><a href=index.html id=logoclick>
+                <header id=title>
+                    <h1>Arbeitszeitrechner</h1>
+                </header>
+            </a>
+            <section id=form>
+                <div class=table>
+                    <div class=tableRow>
+                        <p>Ankunftszeit<p><input id=arrival name=arrival placeholder=hhmm/hmm> <p><span id=namehelp
+                                    class=helptext></span>
+                    </div>
+                    <div class=tableRow>
+                        <p>Geplante Überstunden<p><input id=overtime name=overtime placeholder=(-)hhmm/(-)hmm/(-)mm>
+                                    <p><span id=overtimehelp class=helptext></span>
+                    </div>
+                    <div class=tableRow>
+                        <p>Feierabend<p><span id=endtime></span>
+                                <p><span id=toolatewarning class=helptext></span>
+                    </div>
+                    <div class=tableRow>
+                        <p>Arbeitszeit<p><span id=worktime></span>
+                    </div>
+                    <div class=tableRow>
+                        <p>Pause<p><span id=pauseinput></span> <input id=pausetime name=points max=59 min=0 step=1
+                                    type=range value=30>
+                                <p><span id=pausewarning class=helptext></span>
+                    </div>
+                </div>
+				<div class=tableRow id=backgroundControl>
+					<div class=child>
+						<label for="inputFileToLoad" class="custom-file-upload">
+							Hintergrundbild wählen
+						</label>
+						<input id="inputFileToLoad" type="file" onchange="encodeImageFileAsURL()"/>
+					</div>
+					<div>
+						<select id=backgroundMode class="custom-file-upload child" onchange="backgroundModeChanged()">
+							<option value="auto">Auto</option>
+							<option value="length">Length</option>
+							<option value="cover">Cover</option>
+							<option value="contain">Contain</option>
+						</select>
+						<select id=backgroundRepeat class="custom-file-upload child" onchange="backgroundModeChanged()">
+							<option value="no-repeat">No repeat</option>
+							<option value="repeat">Repeat</option>
+							<option value="repeat-x">Repeat-X</option>
+							<option value="repeat-y">Repeat-Y</option>
+						</select>
+					</div>
+					<button onclick="resetBackground()" class="custom-file-upload child" style="color: #e50000">Hintergrund zurücksetzen</button>
+				</div>
+                <p id=countdown>00:00:00<p id=overtimecounter>
+            </section>
+        </div><span id=progressbar></span>
+        <div id=progressnumber><span id=percentnumber class=blur></span></div>
+    </section>
+</div>
+
+<script>
+    const defaultWorkTime = 27360
+	const defaultPauseTime = 1800
+	const maxWorkTime = 36000
+	const minPause6 = 1800 //min pause time for 6h
+	const minPause10 = 2700 //min pause time for 10h
+	
+	const lskArrival = `time_arrival`
+	const lskOvertime = `time_overtime`
+	const lskTimeUpdated = `time_lastUpdated`
+	
+	const lskBackgroundImg = `background_base64`
+	const lskBackgroundMode = `background_mode`
+	
+	function Time(e) {
+        this.seconds = e % 60, this.minutes = e >= 0 ? Math.floor(e % 3600 / 60) : Math.ceil(e % 3600 / 60), this
+            .hours = e >= 0 ? Math.floor(e / 3600) : Math.ceil(e / 3600), this.totalSeconds = e, this.getHours =
+            function () {
+                return this.hours
+            }, this.getMinutes = function () {
+                return this.minutes
+            }, this.getSeconds = function () {
+                return this.seconds
+            }, this.getTotalSeconds = function () {
+                return this.totalSeconds
+            }, this.addSeconds = function (e) {
+                this.totalSeconds += e, this.recalculate()
+            }, this.addMinutes = function (e) {
+                this.totalSeconds += 60 * e, this.recalculate()
+            }, this.addHours = function (e) {
+                this.totalSeconds += 3600 * e, this.recalculate()
+            }, this.subtractSeconds = function (e) {
+                this.totalSeconds -= e, this.recalculate()
+            }, this.subtractMinutes = function (e) {
+                this.totalSeconds -= 60 * e, this.recalculate()
+            }, this.subtractHours = function (e) {
+                this.totalSeconds -= 3600 * e, this.recalculate()
+            }, this.recalculate = function () {
+                this.seconds = this.totalSeconds % 60, this.minutes = this.totalSeconds >= 0 ? Math.floor(this
+                        .totalSeconds % 3600 / 60) : Math.ceil(this.totalSeconds % 3600 / 60), this.hours = this
+                    .totalSeconds >= 0 ? Math.floor(this.totalSeconds / 3600) : Math.ceil(this.totalSeconds / 3600)
+            }, this.toString = function () {
+                var e = this.totalSeconds < 0,
+                    t = e ? -this.getSeconds() : this.getSeconds();
+                return t = t < 10 ? "0" + t : t, this.toShortString() + ":" + t
+            }, this.toShortString = function () {
+                var e = this.totalSeconds < 0,
+                    t = e ? -this.getHours() : this.getHours(),
+                    n = e ? -this.getMinutes() : this.getMinutes();
+                return t = t < 10 ? "0" + t : t, n = n < 10 ? "0" + n : n, e = e ? "-" : "", e + t + ":" + n
+            }, this.reset = function () {
+                this.totalSeconds = 0, this.recalculate()
+            }
+    }
+
+    function onLoad() {
+        reset(), WORK_TIME = new Time(defaultWorkTime), pauseTime = new Time(1800), effectiveWorkTime = new Time(pauseTime
+                .getTotalSeconds() + WORK_TIME.getTotalSeconds()), MAX_OVERTIME = new Time(maxWorkTime - defaultWorkTime), document
+            .getElementById("arrival").onkeyup = startTimer, document.getElementById("overtime").onkeyup = startTimer,
+            document.getElementById("pausetime").onmousedown = sliderChanged, document.getElementById("pausetime")
+            .onmousemove = sliderChanged, document.getElementById("pausetime").onmouseup = sliderChanged,
+            pullBackground()
+		
+		document.getElementById("arrival").value = localStorage.getItem(lskArrival)
+		document.getElementById("overtime").value = localStorage.getItem(lskOvertime)
+    }
+
+    function pauseChanged() {
+        if (clearInterval(timerId), clearInterval(overtimerId), document.getElementById("pausetime").disabled = !1,
+            validatePauseTime(document.getElementById("pausewarning")) !== !1) {
+            document.getElementById("progressbar").style.visibility = "visible", effectiveWorkTime = new Time(pauseTime
+                .getTotalSeconds() + WORK_TIME.getTotalSeconds());
+            var e = new Time(arrival.getTotalSeconds() + overtime.getTotalSeconds() + effectiveWorkTime
+                .getTotalSeconds()),
+                t = e.toShortString();
+            return e.getTotalSeconds() > 86400 ? document.getElementById("endtime").innerHTML = ">24:00" : document
+                .getElementById("endtime").innerHTML = t + " Uhr", document.getElementById("worktime").innerHTML =
+                new Time(WORK_TIME.getTotalSeconds() + overtime.getTotalSeconds()).toShortString(), validatePauseTime(
+                    document.getElementById("pausewarning")), e.getTotalSeconds() > 3600 * LATEST_WORK_HOUR ?
+                void updateHelpText(document.getElementById("toolatewarning"), HELP_TEXT_TOO_LATE, !0) : void(
+                    timer_tick(e) || (timerId = setInterval(function () {
+                        timer_tick(e)
+                    }, 1e3)))
+        }
+    }
+
+	function pullBackground() {
+		if(localStorage.getItem(lskBackgroundImg)) {
+            document.body.style.backgroundImage = `url('${localStorage.getItem(lskBackgroundImg)}')`
+            //console.log("Background set")
+        }
+	}
+	
+	function backgroundModeChanged() {
+		document.body.style.backgroundSize = document.getElementById("backgroundMode").value
+	}
+
+    function startTimer() {
+		reset(), validateArrivalTime(document.getElementById("namehelp")) === !1 | validateOvertime(document
+            .getElementById("overtimehelp")) === !1 || (document.getElementById("pauseinput").innerHTML = pauseTime
+            .toShortString(), pauseChanged())
+    }
+
+    function timer_tick(e) {
+        var t = new Time(0),
+            n = new Date,
+            i = new Time(3600 * n.getHours() + 60 * n.getMinutes() + n.getSeconds());
+        t.addSeconds(e.getTotalSeconds() - i.getTotalSeconds());
+        var o = t.getTotalSeconds(),
+            d = effectiveWorkTime.getTotalSeconds() + overtime.getTotalSeconds(),
+            s = Math.floor(100 - o / d * 100),
+            r = t.toString();
+        return document.getElementById("countdown").innerHTML = r, document.getElementById("ttle").innerHTML = r +
+            " | " + s + "%", document.getElementById("progressbar").style.right = 100 - s + "%", document
+            .getElementById("percentnumber").innerHTML = s + "%", t.getTotalSeconds() < 1 && (document.getElementById(
+                    "percentnumber").innerHTML = "100%", document.getElementById("countdown").classList.add("pulse"),
+                document.getElementById("countdown").innerHTML = "Feierabend", document.getElementById("part1")
+                .classList.add("endarkenpart1"), document.getElementById("frame").classList.add("enlightenframe"),
+                document.getElementById("ttle").innerHTML = "Feierabend", clearInterval(overtimerId),
+                overtimeCounter_tick(new Time(e.getTotalSeconds() - overtime.getTotalSeconds())), overtimerId =
+                setInterval(function () {
+                    overtimeCounter_tick(new Time(e.getTotalSeconds() - overtime.getTotalSeconds()))
+                }, 1e3)), !1
+    }
+
+    function overtimeCounter_tick(e) {
+        var t = new Time(0),
+            n = new Date,
+            i = new Time(3600 * n.getHours() + 60 * n.getMinutes() + n.getSeconds());
+        t.addSeconds(e.getTotalSeconds() - i.getTotalSeconds()), t.subtractSeconds(2 * t.getTotalSeconds());
+        var o = t.toString();
+        document.getElementById("overtimecounter").innerHTML = o
+    }
+
+    function validateArrivalTime(e) {
+        var t = document.getElementById("arrival").value;
+        if (/^[\d]{3}$/.test(t) ? (t = t.splice(1, 0, ":"), document.getElementById("arrival").value = t) :
+            /^([\d]{4}|\d:[\d]{3})$/.test(t) && (t = t.replace(":", ""), t = t.splice(2, 0, ":"), document
+                .getElementById("arrival").value = t), "" == t) return e.innerHTML = "", !1;
+        if (/^[\d]{1,2}:?[\d]{2}$/.test(t)) {
+            arrival.reset();
+            var n = t.split(":")[1],
+                i = t.split(":")[0];
+            return n = parseInt(n), i = parseInt(i), arrival.addMinutes(n), arrival.addHours(i), n > 59 ? (
+                updateHelpText(e, HELP_TEXT_ARRIVAL, !0), !1) : i > 23 ? (updateHelpText(e, HELP_TEXT_ARRIVAL, !0),
+                !1) : i < 6 ? (updateHelpText(e, HELP_TEXT_TOO_EARLY, !0), !1) : (updateHelpText(e, "", !1), !0)
+        }
+        return updateHelpText(e, HELP_TEXT_ARRIVAL, !0), !1
+    }
+
+    function validateOvertime(e) {
+        var t = document.getElementById("overtime").value;
+        if (/^(^-)?[\d]{3}$/.test(t) ? (t = "-" == t.charAt(0) ? t.splice(2, 0, ":") : t.splice(1, 0, ":"), document
+                .getElementById("overtime").value = t) : /^(^-)?([\d]{4}|\d:[\d]{3})$/.test(t) && (t = t.replace(":",
+                ""), t = "-" == t.charAt(0) ? t.splice(3, 0, ":") : t.splice(2, 0, ":"), document.getElementById(
+                "overtime").value = t), /^(^-)?[\d]{1,2}(:?[\d]{2})?$/.test(t) || "" == t) {
+            if ("" == t) return e.innerHTML = "", overtime.reset(), !0;
+            overtime.reset();
+            var n = 0,
+                i = 0;
+            return null == t.split(":")[1] ? (i = 0, n = t) : (n = t.split(":")[1], i = t.split(":")[0]), n > 59 ? (
+                updateHelpText(e, HELP_TEXT_OVERTIME, !0), !1) : (i = parseInt(i), n = parseInt(n), "-" == t.charAt(
+                    0) && (i = neg(i), n = neg(n)), overtime.addHours(i), overtime.addMinutes(n), overtime
+                .getTotalSeconds() > MAX_OVERTIME.getTotalSeconds() ? (updateHelpText(e,
+                    HELP_TEXT_TOO_MUCH_OVERTIME, !0), !1) : overtime.getTotalSeconds() < WORK_TIME
+            .getTotalSeconds() * -1 ? (updateHelpText(e, HELP_TEXT_TOO_FEW_OVERTIME, !0), !1) : (updateHelpText(e,
+                    "", !1), !0))
+        }
+        return updateHelpText(e, HELP_TEXT_OVERTIME, !0), !1
+    }
+
+    function validatePauseTime(e) {
+        var t = new Time(overtime.getTotalSeconds() + WORK_TIME.getTotalSeconds()),
+            n = t.getTotalSeconds() / 3600 > 6 ? 30 : 0,
+            i = document.getElementById("pauseinput").innerHTML;
+        if (/^[\d]{3}$/.test(i) ? (i = i.splice(1, 0, ":"), document.getElementById("pauseinput").innerHTML = i) :
+            /^([\d]{4}|\d:[\d]{3})$/.test(i) && (i = i.replace(":", ""), i = i.splice(2, 0, ":"), document
+                .getElementById("pauseinput").innerHTML = i), /^[\d]{1,2}(:?[\d]{2})?$/.test(i)) {
+            var o, d;
+            return null == i.split(":")[1] ? (o = 0, d = i) : (d = i.split(":")[1], o = i.split(":")[0]), d > 59 ? (
+                updateHelpText(e, HELP_TEXT_PAUSE, !0), !1) : (pauseTime.reset(), pauseTime.addMinutes(d), pauseTime
+                .addHours(o), pauseTime.getMinutes() + 60 * pauseTime.getHours() < n ? (updateHelpText(e,
+                    "Eine Pausenzeit von " + n + " Minuten darf nicht unterschritten werden.", !0), !1) : (
+                    updateHelpText(e, "", !1), document.getElementById("pausetime").value = 60 * pauseTime
+                    .getHours() + pauseTime.getMinutes(), !0))
+        }
+        return updateHelpText(e, HELP_TEXT_PAUSE, !0), !1
+    }
+
+    function sliderChanged() {
+        if (1 != document.getElementById("pausetime").disabled) {
+            var e = document.getElementById("pausetime").value < 10 ? "0" + document.getElementById("pausetime").value :
+                document.getElementById("pausetime").value;
+            document.getElementById("pauseinput").innerHTML = "00:" + e, pauseChanged()
+        }
+    }
+
+    function reset() {
+        for (document.getElementById("countdown").innerHTML = "00:00:00", document.getElementById("endtime").innerHTML =
+            "", document.getElementById("progressbar").style.visibility = "hidden", document.getElementById(
+                "percentnumber").innerHTML = "", document.getElementById("ttle").innerHTML = "Arbeitszeitrechner",
+            document.getElementById("toolatewarning").innerHTML = "", document.getElementById("worktime").innerHTML =
+            "", document.getElementById("overtimecounter").innerHTML = "", document.getElementById("pauseinput")
+            .innerHTML = "", document.getElementById("pausetime").disabled = !0, document.getElementById("pausewarning")
+            .innerHTML = "", i = 0; i < document.getElementsByClassName("helptext").length; i++) document
+            .getElementsByClassName("helptext")[i].classList.add("helptextgreen");
+        clearInterval(timerId), clearInterval(overtimerId), document.getElementById("part1").classList.remove(
+                "endarkenpart1"), document.getElementById("frame").classList.remove("enlightenframe"), document
+            .getElementById("countdown").classList.remove("pulse")
+    }
+	
+	function resetBackground() {
+		if(localStorage.getItem(lskBackgroundImg)) {
+			localStorage.removeItem(lskBackgroundImg)
+			localStorage.removeItem(lskBackgroundMode)
+			location.reload()
+		}
+	}
+
+    function neg(e) {
+        var t;
+        return t = e < 0 ? e : e * -1
+    }
+
+    function updateHelpText(e, t, n) {
+        null != e && (n ? (e.innerHTML = t, e.classList.remove("helptextgreen")) : (e.innerHTML = "✓", e.classList.add(
+            "helptextgreen")))
+    }
+
+    function showInfoBox(e) {
+        document.getElementById("smalladvice").classList.add("smalladvice"), e ? addCursiveText() : removeCursiveText()
+    }
+
+    function addCursiveText() {
+        document.getElementById("smalladvice").innerHTML = "Es wird von einem Soll von " + WORK_TIME.getHours() + ":" +
+            WORK_TIME.getMinutes() + "h ausgegangen. Zusammen mit " + pauseTime.getMinutes() +
+            " Minuten Pause ergibt sich eine Gesamtzeit von " + getTotalTime(effectiveWorkTime.toShortString()) + "h.",
+            document.getElementById("box2").style.visibility = "hidden", document.getElementById("box1").style
+            .backgroundColor = "rgba(255,255,255,.93)"
+    }
+
+    function removeCursiveText() {
+        document.getElementById("smalladvice").innerHTML = "", document.getElementById("box1").style.backgroundColor =
+            "rgba(255,255,255,.5)", document.getElementById("box2").style.visibility = "visible"
+    }
+
+    function showOptions(e) {
+        document.getElementById("smalladvice").classList.add("smalladvice"), e ? addOptions() : removeOptions()
+    }
+
+    function addOptions() {
+        document.getElementById("options").innerHTML =
+            "<Strong>Optionen</strong><br><input type='checkbox' id='option_FA' checked> Feierabendanimation<br><input type='checkbox' id='option_PA' checked> Prozentanzeige<br><input type='checkbox' id='option_FB' checked> Fortschrittsbalken<br><input type='checkbox' id='option_EA' checked> Easter Egg",
+            document.getElementById("box2").style.backgroundColor = "rgba(255,255,255,.93)"
+    }
+
+    function removeOptions() {
+        document.getElementById("options").innerHTML = "", document.getElementById("box2").style.backgroundColor =
+            "rgba(255,255,255,.5)"
+    }
+	
+	function encodeImageFileAsURL() {
+		const filesSelected = document.getElementById("inputFileToLoad").files;
+        
+        if (filesSelected.length > 0) {
+            const fileToLoad = filesSelected[0];
+
+            const fileReader = new FileReader();
+
+            fileReader.onload = function(fileLoadedEvent) {
+                const srcData = fileLoadedEvent.target.result // <--- data: base64 string
+
+                localStorage.setItem(lskBackgroundImg, srcData)
+                pullBackground()
+            }
+
+            fileReader.readAsDataURL(fileToLoad);
+        }
+    }
+	
+    var HELP_TEXT_ARRIVAL = "Bitte im Format hhmm oder hmm eingeben.",
+        HELP_TEXT_OVERTIME = "Bitte im Format (-)hhmm, (-)hmm oder (-)mm eingeben.",
+        HELP_TEXT_PAUSE = "Bitte im Format hhmm, hmm oder mm eingeben.",
+        HELP_TEXT_TOO_MUCH_OVERTIME = `Mehr als ${new Time(maxWorkTime - defaultWorkTime)}h Überstunden sind nicht zulässig.`,
+        HELP_TEXT_TOO_FEW_OVERTIME = `Mehr als ${new Time(defaultWorkTime)}h abzubauende Stunden sind nicht zulässig.`,
+        HELP_TEXT_TOO_EARLY = "Vor 6:00 Uhr darf nicht begonnen werden.",
+        HELP_TEXT_TOO_LATE = "Es darf nicht länger als bis 20:00 Uhr gearbeitet werden.",
+        WORK_TIME, pauseTime, effectiveWorkTime, MAX_OVERTIME, LATEST_WORK_HOUR = 20,
+        EARLIEST_WORK_HOUR = 6,
+        arrival = new Time(0),
+        overtime = new Time(0),
+        timerId, overtimerId;
+    window.onload = onLoad, String.prototype.splice = function (e, t, n) {
+        return this.slice(0, e) + n + this.slice(e + Math.abs(t))
+    }
+</script>
+
+<style>
+    body {
+        font-family: Calibri, Helvetica, sans-serif;
+		background-color: rgba(50, 50, 50, 1);
+    }
+
+    body,
+    html {
+        height: 100%;
+        margin: 0;
+    }
+
+    #wrapper1 {
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center top;
+        background-size: 100% 100%;
+        margin: 0;
+        padding: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
+
+    #part1 {
+        background-color: rgba(0, 0, 0, 0);
+        padding-top: 30px;
+        margin: 0
+    }
+
+    #part2 {
+        font-family: "Open Sans";
+        font-size: 150px;
+        color: #eee;
+        line-height: 1em;
+        margin-top: -50px;
+        padding: 0;
+        height: 100%
+    }
+	
+	#backgroundControl {
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		width: 620px;
+		height: 32px;
+	}
+	
+	#backgroundControl .child {
+		width: 180px;
+		text-align: center;
+	}
+	
+	#backgroundControl select.child {
+		width: 100px;
+		text-align: center;
+	}
+	
+	input[type="file"] {
+        display: none;
+    }
+
+    .custom-file-upload {
+        border: 1px solid #000000;
+		background-color: rgba(200, 200, 200, 0.5);
+        display: inline-block;
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+
+    @keyframes endarken {
+        from {
+            background-color: rgba(0, 0, 0, 0)
+        }
+
+        to {
+            background-color: rgba(0, 0, 0, .6)
+        }
+    }
+
+    @keyframes enlighten {
+        from {
+            background-color: rgba(255, 255, 255, .5)
+        }
+
+        to {
+            background-color: rgba(255, 255, 255, .9)
+        }
+    }
+
+    @keyframes pulse {
+        from {
+            color: rgba(255, 0, 0, 1)
+        }
+
+        33% {
+            color: rgba(255, 0, 0, 1)
+        }
+
+        to {
+            color: rgba(255, 0, 0, 0)
+        }
+    }
+
+    .endarkenpart1 {
+        animation: endarken 4s forwards
+    }
+
+    .enlightenframe {
+        animation: enlighten 4s forwards
+    }
+
+    .pulse {
+        animation: pulse 2s infinite alternate
+    }
+
+    #part2 {
+        background-color: #333;
+        height: 1000px
+    }
+
+    input {
+        background-color: rgba(255, 255, 255, .5);
+        border: 0;
+        padding: 6px;
+        width: 290px;
+        border-radius: 5px
+    }
+
+    input#pausetime,
+    input#pausetime:focus,
+    input#pausetime:hover {
+        background-color: rgba(0, 0, 0, 0);
+        padding: 0;
+        box-shadow: none;
+        border: none;
+        width: 200px
+    }
+
+    #pauseinput {
+        display: inline-block;
+        width: 70px
+    }
+
+    input:focus,
+    input:hover {
+        padding: 5px;
+        border: 1px solid rgba(255, 255, 255, .8);
+        box-shadow: 0 0 5px rgba(255, 255, 255, .8) inset
+    }
+
+    #frame {
+        width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 5px;
+        background-color: rgba(255, 255, 255, .5)
+    }
+
+    header#title {
+        color: #3b3b3b;
+        padding: 30px 10px 30px 10px;
+        text-align: center;
+        font-family: "Open Sans"
+    }
+
+    section {
+        padding: 0 20px 20px 20px
+    }
+
+    #endtime {
+        text-align: right !important
+    }
+
+    #progressbar {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        box-shadow: 0 0 15px 10px rgba(255, 255, 255, 1);
+        visibility: hidden
+    }
+
+    #percentnumber {
+        position: absolute;
+        top: 93%;
+        left: 50%;
+        right: 50%;
+        color: rgba(255, 255, 255, .5);
+        display: block;
+        font-size: 36px;
+        font-family: "Open Sans";
+        font-weight: 300
+    }
+
+    .blur {
+        text-shadow: 0 0 32px #900;
+        color: transparent
+    }
+
+    .infobox {
+        background-color: rgba(255, 255, 255, .5);
+        border-radius: 2px;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        float: left;
+        border-radius: 5px
+    }
+
+    #box1 {
+        margin-right: -10% !important;
+        margin-left: 85% !important;
+        margin-top: -7% !important;
+        padding-left: 7px !important;
+        padding-right: 7px !important;
+        padding-top: 2px !important;
+        border-radius: 5px
+    }
+
+    #box2 {
+        margin-right: -25% !important;
+        margin-left: 90% !important;
+        margin-top: -7% !important;
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        padding-top: 2px !important;
+        border-radius: 5px
+    }
+
+    #boxZWS {
+        margin-right: -40% !important;
+        margin-left: 80% !important;
+        margin-top: -7% !important;
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        padding-top: 2px !important
+    }
+
+    .info {
+        font-family: "Courier New", monospace;
+        font-size: 120%;
+        color: #d00
+    }
+
+    .smalladvice {
+        font-style: italic;
+        line-height: 1.2em;
+        font-size: 90%
+    }
+
+    .table {
+        margin-top: 20px;
+        display: table
+    }
+
+    .table:hover {
+        max-height: 100px
+    }
+
+    .fadeOut {
+        max-height: 0
+    }
+
+    .tableRow {
+        display: table-row;
+        height: 32px
+    }
+
+    .tableRow p {
+        display: table-cell;
+        vertical-align: top;
+        padding: 3px
+    }
+
+    .tableRow p:first-child {
+        text-align: right
+    }
+
+    .tableRow p:nth-child(2) {
+        padding-left: 15px;
+        width: 300px
+    }
+
+    h1 {
+        font-size: 240%;
+        padding: 0;
+        margin: 0
+    }
+
+    h2 {
+        padding: 0;
+        margin: 0
+    }
+
+    a#logoclick {
+        color: #3b3b3b;
+        text-decoration: none
+    }
+
+    header#title {
+        transition: background-color .2s ease-in
+    }
+
+    header#title:hover {
+        background-color: rgba(230, 230, 230, .5)
+    }
+
+    footer#mainfooter {
+        font-size: 70%;
+        text-align: center
+    }
+
+    #countdown {
+        font-size: 400%;
+        font-family: "Open Sans", sans-serif;
+        font-weight: 300;
+        color: #e55;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+        cursor: default
+    }
+
+    #overtimecounter {
+        font-size: 150%;
+        font-family: "Open Sans", sans-serif;
+        font-weight: 300;
+        color: #e55;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+        cursor: default
+    }
+
+    .helptext {
+        margin-left: 20px;
+        padding: 5px;
+        font-size: 80%;
+        color: red;
+        float: left;
+        position: absolute;
+        border: 1px solid rgba(255, 255, 255, .8);
+        box-shadow: 0 0 5px rgba(255, 255, 255, .8) inset;
+        background-color: rgba(255, 255, 255, .3);
+        border-radius: 5px
+    }
+
+    .helptextgreen {
+        color: green !important;
+        border: none !important;
+        background-color: rgba(0, 0, 0, 0) !important;
+        box-shadow: none !important
+    }
+
+    @keyframes scrollbg {
+        from {
+            background-position: center top
+        }
+
+        to {
+            background-position: 50% 100%
+        }
+    }
+
+    .stretchani {
+        background-size: 100% 100000%
+    }
+
+    .scrollani {
+        animation: scrollbg 10s infinite alternate linear
+    }
+
+    @keyframes drive {
+        0% {
+            margin-left: 33%;
+            margin-top: 30px
+        }
+
+        12% {
+            margin-left: 32.5%
+        }
+
+        25% {
+            margin-left: 33.5%
+        }
+
+        37% {
+            margin-left: 32%
+        }
+
+        50% {
+            margin-left: 33%
+        }
+
+        62% {
+            margin-left: 32%
+        }
+
+        75% {
+            margin-left: 32.5%
+        }
+
+        87% {
+            margin-left: 32%
+        }
+
+        100% {
+            margin-left: 33%;
+            margin-top: 20%
+        }
+    }
+
+    @keyframes driveongoing {
+        0% {
+            margin-left: 33%;
+            margin-top: 20%
+        }
+
+        12% {
+            margin-left: 32.5%
+        }
+
+        25% {
+            margin-left: 33.5%
+        }
+
+        37% {
+            margin-left: 32%
+        }
+
+        50% {
+            margin-left: 33%;
+            margin-top: 20.3%
+        }
+
+        62% {
+            margin-left: 32%
+        }
+
+        75% {
+            margin-left: 32.5%
+        }
+
+        87% {
+            margin-left: 32%
+        }
+
+        100% {
+            margin-left: 33%;
+            margin-top: 20%
+        }
+    }
+
+    .driveani {
+        animation: drive 1s forwards
+    }
+
+    .driveongoingani {
+        animation: driveongoing .8s infinite
+    }
+</style>
