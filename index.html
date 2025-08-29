@@ -2,274 +2,247 @@
 <meta charset=utf-8>
 <title id=ttle>Arbeitszeitrechner</title>
 <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,300' rel='stylesheet' type='text/css'>
-<!--[if lt IE 10]><script type="text/javascript">window.onload = function() {window.open("iesucks.htm", "_self");}</script><![endif]-->
 
-<div id=wrapper1>
-    <section id=part1>
-        <div id=frame><a href=index.html id=logoclick>
-                <header id=title>
-                    <h1>Arbeitszeitrechner</h1>
-                </header>
-            </a>
-            <section id=form>
-                <div class=table>
-                    <div class=tableRow>
-                        <p>Ankunftszeit<p><input id=arrival name=arrival placeholder=hhmm/hmm> <p><span id=namehelp
-                                    class=helptext></span>
-                    </div>
-                    <div class=tableRow>
-                        <p>Geplante Überstunden<p><input id=overtime name=overtime placeholder=(-)hhmm/(-)hmm/(-)mm>
-                                    <p><span id=overtimehelp class=helptext></span>
-                    </div>
-                    <div class=tableRow>
-                        <p>Feierabend<p><span id=endtime></span>
-                                <p><span id=toolatewarning class=helptext></span>
-                    </div>
-                    <div class=tableRow>
-                        <p>Arbeitszeit<p><span id=worktime></span>
-                    </div>
-                    <div class=tableRow>
-                        <p>Pause<p><span id=pauseinput></span> <input id=pausetime name=points max=59 min=0 step=1
-                                    type=range value=30>
-                                <p><span id=pausewarning class=helptext></span>
-                    </div>
-                </div>
-				<div class=tableRow id=backgroundControl>
-					<div class=child>
-						<label for="inputFileToLoad" class="custom-file-upload">
-							Hintergrundbild wählen
-						</label>
-						<input id="inputFileToLoad" type="file" onchange="encodeImageFileAsURL()"/>
+<body class=background>
+	<div id=wrapper1>
+		<section id=part1>
+			<div id=frame><a href=index.html id=logoclick>
+					<header id=title>
+						<h1>Arbeitszeitrechner</h1>
+					</header>
+				</a>
+				<section id=form>
+					<div class=table>
+						<div class=tableRow>
+							<p>Ankunftszeit<p><input id=arrival name=arrival placeholder=hhmm/hmm> <p><span id=arrivalhelp
+										class=helptext></span>
+						</div>
+						<div class=tableRow>
+							<p>Geplante Überstunden<p><input id=overtime name=overtime placeholder=(-)hhmm/(-)hmm/(-)mm>
+										<p><span id=overtimehelp class=helptext></span>
+						</div>
+						<div class=tableRow>
+							<p>Feierabend<p><input id=endtime name=endtime placeholder=hhmm/hmm> <p><span id=toolatewarninghelp
+										class=helptext></span>
+						</div>
+						<div class=tableRow>
+							<p>Arbeitszeit<p><input id=worktime name=worktime placeholder=hhmm/hmm> <p><span id=worktimehelp
+										class=helptext></span>
+						</div>
+						<div class=tableRow>
+							<p>Pause<p><span id=pauseinput></span> <input id=pausetime name=points max=59 min=0 step=1
+										type=range value=30>
+									<p><span id=pausewarning class=helptext></span>
+						</div>
 					</div>
-					<div>
-						<select id=backgroundMode class="custom-file-upload child" onchange="backgroundModeChanged()">
-							<option value="auto">Auto</option>
-							<option value="length">Length</option>
-							<option value="cover">Cover</option>
-							<option value="contain">Contain</option>
-						</select>
-						<select id=backgroundRepeat class="custom-file-upload child" onchange="backgroundModeChanged()">
-							<option value="no-repeat">No repeat</option>
-							<option value="repeat">Repeat</option>
-							<option value="repeat-x">Repeat-X</option>
-							<option value="repeat-y">Repeat-Y</option>
-						</select>
+					<div class=tableRow id=backgroundControl>
+						<div class=child>
+							<label for="inputFileToLoad" class="custom-file-upload">
+								Hintergrundbild wählen
+							</label>
+							<input id="inputFileToLoad" type="file" onchange="encodeImageFileAsURL()"/>
+						</div>
+						<div>
+							<select id=backgroundMode class="custom-file-upload child" onchange="backgroundModeChanged()">
+								<option value="auto">Auto</option>
+								<option value="length">Length</option>
+								<option value="cover">Cover</option>
+								<option value="contain">Contain</option>
+							</select>
+							<select id=backgroundRepeat class="custom-file-upload child" onchange="backgroundModeChanged()">
+								<option value="no-repeat">No repeat</option>
+								<option value="repeat">Repeat</option>
+								<option value="repeat-x">Repeat-X</option>
+								<option value="repeat-y">Repeat-Y</option>
+							</select>
+						</div>
+						<button onclick="resetBackground()" class="custom-file-upload child" style="color: #e50000">Hintergrund zurücksetzen</button>
 					</div>
-					<button onclick="resetBackground()" class="custom-file-upload child" style="color: #e50000">Hintergrund zurücksetzen</button>
-				</div>
-                <p id=countdown>00:00:00<p id=overtimecounter>
-            </section>
-        </div><span id=progressbar></span>
-        <div id=progressnumber><span id=percentnumber class=blur></span></div>
-    </section>
-</div>
+					<p id=countdown>00:00:00<p id=overtimecounter>
+				</section>
+			</div><span id=progressbar></span>
+			<div id=progressnumber><span id=percentnumber class=blur></span></div>
+		</section>
+	</div>
+</body>
 
 <script>
-    const DEFAULT_WORK_TIME = 27360;   // 7,6h
-    const MAX_WORK_TIME = 36000;       // 10h
-    const MIN_PAUSE_6H = 1800;         // 30min
-    const MIN_PAUSE_10H = 2700;        // 45min
-    const LATEST_WORK_HOUR = 20;
-    const EARLIEST_WORK_HOUR = 6;
+    // -------------- Default values ---------------
+	const DEFAULT_WORK_TIME = 27360   	// 7,6h
+    const MAX_WORK_TIME = 36000       	// 10h
+    const MIN_PAUSE_6H = 1800        	// 30min
+    const MIN_PAUSE_10H = 2700        	// 45min
+    const LATEST_WORK_HOUR = 20
+    const EARLIEST_WORK_HOUR = 6
+	
+	// ------------------ Variables ------------------
+	let quittingTime
 
-    // LocalStorage Keys
-    const LS_ARRIVAL = "time_arrival";
-    const LS_OVERTIME = "time_overtime";
-    const LS_BACKGROUND_IMG = "background_base64";
-    const LS_BACKGROUND_MODE = "background_mode";
-    const LS_BACKGROUND_REPEAT = "background_repeat";
+    // -------------- Local Storage Keys ---------------
+    const LS_ARRIVAL = "time_arrival"
+    const LS_OVERTIME = "time_overtime"
+	const LS_LAST_TIME_UPDATE = "time_lastUpdate"
+	const LS_PAUSE = "time_pause"
+    const LS_BACKGROUND_IMG = "background_base64"
+    const LS_BACKGROUND_MODE = "background_mode"
+    const LS_BACKGROUND_REPEAT = "background_repeat"
+	
+	// ------------------ EventListener ------------------
+	window.addEventListener("load", onLoad)
+	document.getElementById("arrival").addEventListener("keyup", onChangeArrival)
+	document.getElementById("overtime").addEventListener("keyup", onChangeOvertime)
+	document.getElementById("pausetime").addEventListener("mousemove", onChangePause)
+	
+	// ------------------ OnLoad ------------------
+	function onLoad() {
+		
+		const lastUpdate = localStorage.getItem(LS_LAST_TIME_UPDATE)
+		
+		pullBackground()
+		
+		if(lastUpdate != getISODate(new Date())) {
+			localStorage.removeItem(LS_ARRIVAL)
+			localStorage.removeItem(LS_OVERTIME)
+			localStorage.removeItem(LS_PAUSE)
+			localStorage.removeItem(LS_LAST_TIME_UPDATE)
+		}
+		else {
+			const arrival = localStorage.getItem(LS_ARRIVAL)
+			const overtime = localStorage.getItem(LS_OVERTIME)
+			const pausetime = localStorage.getItem(LS_PAUSE)
+			
+			if(arrival)
+				document.getElementById("arrival").value = arrival
+			
+			if(overtime)
+				document.getElementById("overtime").value = overtime
+			
+			if(pausetime)
+				document.getElementById("pausetime").value = pausetime
+		}
+	}
+	
+	// ------------------ Calculations ------------------
+	function updateEndtime() {
+		const arrivalTime = localStorage.getItem(LS_ARRIVAL)
+		const overtimeTime = localStorage.getItem(LS_OVERTIME)
+		const pauseTime = localStorage.getItem(LS_PAUSE)
+		
+		endtime = arrivalTime + DEFAULT_WORK_TIME + overtimeTime + pausetime
+		document.getElementById("endtime").innerHTML = endtime
+	}
+	
+	function updateWorktime() {
+		
+	}
+	
+	function updateOvertime() {
+		
+	}
+	
+	// ------------------ Services ------------------
+	function getISODate(d) {
+		return new Date(d).toISOString().split("T")[0]
+	}
+	
+	function updateLastChange() {
+		if(!localStorage.getItem(LS_LAST_TIME_UPDATE))
+			localStorage.setItem(LS_LAST_TIME_UPDATE, getISODate(new Date()))
+	}
+	
+	function resetInputs() {
+		document.getElementById("overtime").value = ``
+		document.getElementById("endtime").value = ``
+		document.getElementById("worktime").value = ``
+		document.getElementById("pausetime").value = MIN_PAUSE_6H
+		
+		localStorage.removeItem(LS_OVERTIME)
+		localStorage.removeItem(LS_PAUSE)
+	}
+	
+	// ------------------ Input ------------------
+	function onChangeArrival() {
+		localStorage.setItem(LS_ARRIVAL, document.getElementById("arrival").value)
+		
+		updateLastChange()
+		resetInputs()
+		updateEndtime()
+	}
+	
+	function onChangeOvertime() {
+		localStorage.setItem(LS_OVERTIME, document.getElementById("overtime").value)
+		
+		updateEndtime()
+	}
+	
+	function onChangePause() {
+		localStorage.setItem(LS_PAUSE, document.getElementById("pausetime").value)
+		
+		updateEndtime()
+	}
+	
+	function onChangeEndtime() {
+		
+	}
+	
+	function onChangeWorktime() {
+		
+	}
 
-    // ------------------ Zeitklasse ------------------
-    class Time {
-        constructor(seconds = 0) {
-            this.totalSeconds = seconds;
-            this.recalculate();
-        }
-
-        recalculate() {
-            this.seconds = Math.abs(this.totalSeconds) % 60;
-            this.minutes = Math.floor(Math.abs(this.totalSeconds) % 3600 / 60);
-            this.hours = Math.floor(Math.abs(this.totalSeconds) / 3600);
-            if (this.totalSeconds < 0) {
-                this.hours *= -1;
-                this.minutes *= -1;
-                this.seconds *= -1;
-            }
-        }
-
-        addSeconds(sec) { this.totalSeconds += sec; this.recalculate(); }
-        addMinutes(min) { this.addSeconds(min * 60); }
-        addHours(h) { this.addSeconds(h * 3600); }
-        subtractSeconds(sec) { this.addSeconds(-sec); }
-        subtractMinutes(min) { this.addMinutes(-min); }
-        subtractHours(h) { this.addHours(-h); }
-
-        reset() { this.totalSeconds = 0; this.recalculate(); }
-
-        toShortString() {
-            const neg = this.totalSeconds < 0 ? "-" : "";
-            const h = String(Math.abs(this.hours)).padStart(2, "0");
-            const m = String(Math.abs(this.minutes)).padStart(2, "0");
-            return `${neg}${h}:${m}`;
-        }
-
-        toString() {
-            const s = String(Math.abs(this.seconds)).padStart(2, "0");
-            return `${this.toShortString()}:${s}`;
-        }
-
-        getTotalSeconds() { return this.totalSeconds; }
-    }
-
-    // ------------------ Globale Variablen ------------------
-    let WORK_TIME, pauseTime, effectiveWorkTime, MAX_OVERTIME;
-    let arrival = new Time(0);
-    let overtime = new Time(0);
-    let timerId, overtimerId;
-
-    // ------------------ Init ------------------
-    window.addEventListener("load", onLoad);
-
-    function onLoad() {
-        reset();
-
-        WORK_TIME = new Time(DEFAULT_WORK_TIME);
-        pauseTime = new Time(MIN_PAUSE_6H);
-        effectiveWorkTime = new Time(pauseTime.getTotalSeconds() + WORK_TIME.getTotalSeconds());
-        MAX_OVERTIME = new Time(MAX_WORK_TIME - DEFAULT_WORK_TIME);
-
-        // Input Events
-        document.getElementById("arrival").addEventListener("keyup", startTimer);
-        document.getElementById("overtime").addEventListener("keyup", startTimer);
-        //document.getElementById("pausetime").addEventListener("input", sliderChanged);
-
-        // Background laden
-        pullBackground();
-
-        // Werte aus LocalStorage laden
-        document.getElementById("arrival").value = localStorage.getItem(LS_ARRIVAL) || "";
-        document.getElementById("overtime").value = localStorage.getItem(LS_OVERTIME) || "";
-        document.getElementById("backgroundMode").value = localStorage.getItem(LS_BACKGROUND_MODE) || "auto";
-        document.getElementById("backgroundRepeat").value = localStorage.getItem(LS_BACKGROUND_REPEAT) || "no-repeat";
-    }
-
-    // ------------------ Hintergrund ------------------
-    function pullBackground() {
-        const img = localStorage.getItem(LS_BACKGROUND_IMG);
-        if (img) document.body.style.backgroundImage = `url('${img}')`;
-
-        const mode = localStorage.getItem(LS_BACKGROUND_MODE);
-        if (mode) document.body.style.backgroundSize = mode;
-
-        const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT);
-        if (repeat) document.body.style.backgroundRepeat = repeat;
+    // ------------------ Background ------------------
+	function pullBackground() {
+        const img = localStorage.getItem(LS_BACKGROUND_IMG)
+		const mode = localStorage.getItem(LS_BACKGROUND_MODE)
+		const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
+		
+        if (img)
+			document.body.style.backgroundImage = `url('${img}')`
+		
+        if (img && mode) {
+			document.body.style.backgroundMode = mode
+			document.getElementById("backgroundMode").value = mode
+			
+			document.body.style.backgroundRepeat = repeat
+			document.getElementById("backgroundRepeat").value = repeat
+		}
     }
 
     function backgroundModeChanged() {
-        localStorage.setItem(LS_BACKGROUND_MODE, document.getElementById("backgroundMode").value);
-        localStorage.setItem(LS_BACKGROUND_REPEAT, document.getElementById("backgroundRepeat").value);
-        pullBackground();
+        localStorage.setItem(LS_BACKGROUND_MODE, document.getElementById("backgroundMode").value)
+        localStorage.setItem(LS_BACKGROUND_REPEAT, document.getElementById("backgroundRepeat").value)
+		
+        pullBackground()
     }
 
     function resetBackground() {
-        localStorage.removeItem(LS_BACKGROUND_IMG);
-        localStorage.removeItem(LS_BACKGROUND_MODE);
-        localStorage.removeItem(LS_BACKGROUND_REPEAT);
-        location.reload();
+        localStorage.removeItem(LS_BACKGROUND_IMG)
+        localStorage.removeItem(LS_BACKGROUND_MODE)
+        localStorage.removeItem(LS_BACKGROUND_REPEAT)
+		
+        location.reload()
     }
 
     function encodeImageFileAsURL() {
-        const file = document.getElementById("inputFileToLoad").files[0];
-        if (!file) return;
+        const file = document.getElementById("inputFileToLoad").files[0]
+        
+		if (!file) return
 
-        const reader = new FileReader();
+        const reader = new FileReader()
+		
         reader.onload = e => {
-            localStorage.setItem(LS_BACKGROUND_IMG, e.target.result);
-            pullBackground();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    // ------------------ Timer Logik ------------------
-    function startTimer() {
-        reset();
-        const validArrival = validateArrivalTime(document.getElementById("namehelp"));
-        const validOvertime = validateOvertime(document.getElementById("overtimehelp"));
-
-        if (validArrival && validOvertime) {
-            document.getElementById("pauseinput").textContent = pauseTime.toShortString();
-            pauseChanged();
+            localStorage.setItem(LS_BACKGROUND_IMG, e.target.result)
+            pullBackground()
         }
-    }
-
-    function pauseChanged() {
-        clearInterval(timerId);
-        clearInterval(overtimerId);
-
-        const warningElem = document.getElementById("pausewarning");
-        if (!validatePauseTime(warningElem)) return;
-
-        effectiveWorkTime = new Time(pauseTime.getTotalSeconds() + WORK_TIME.getTotalSeconds());
-
-        const endTime = new Time(arrival.getTotalSeconds() + overtime.getTotalSeconds() + effectiveWorkTime.getTotalSeconds());
-
-        document.getElementById("endtime").textContent =
-            endTime.getTotalSeconds() > 86400 ? ">24:00" : `${endTime.toShortString()} Uhr`;
-
-        document.getElementById("worktime").textContent =
-            new Time(WORK_TIME.getTotalSeconds() + overtime.getTotalSeconds()).toShortString();
-
-        if (endTime.getTotalSeconds() > LATEST_WORK_HOUR * 3600) {
-            updateHelpText(document.getElementById("toolatewarning"), HELP_TEXT_TOO_LATE, true);
-            return;
-        }
-
-        timer_tick(endTime);
-        timerId = setInterval(() => timer_tick(endTime), 1000);
-    }
-
-    // ------------------ Reset ------------------
-    function reset() {
-        document.getElementById("countdown").textContent = "00:00:00";
-        document.getElementById("endtime").textContent = "";
-        document.getElementById("progressbar").style.visibility = "hidden";
-        document.getElementById("percentnumber").textContent = "";
-        document.getElementById("ttle").textContent = "Arbeitszeitrechner";
-        document.getElementById("toolatewarning").textContent = "";
-        document.getElementById("worktime").textContent = "";
-        document.getElementById("overtimecounter").textContent = "";
-        document.getElementById("pauseinput").textContent = "";
-        document.getElementById("pausetime").disabled = true;
-        document.getElementById("pausewarning").textContent = "";
-
-        [...document.getElementsByClassName("helptext")].forEach(el => el.classList.add("helptextgreen"));
-
-        clearInterval(timerId);
-        clearInterval(overtimerId);
-
-        document.getElementById("part1").classList.remove("endarkenpart1");
-        document.getElementById("frame").classList.remove("enlightenframe");
-        document.getElementById("countdown").classList.remove("pulse");
-    }
-
-    // ------------------ Hilfsfunktionen ------------------
-    function updateHelpText(elem, text, isError) {
-        if (!elem) return;
-        if (isError) {
-            elem.textContent = text;
-            elem.classList.remove("helptextgreen");
-        } else {
-            elem.textContent = "✓";
-            elem.classList.add("helptextgreen");
-        }
+		
+        reader.readAsDataURL(file)
     }
 
     // ------------------ Texte ------------------
     const HELP_TEXT_ARRIVAL = "Bitte im Format hhmm oder hmm eingeben.";
     const HELP_TEXT_OVERTIME = "Bitte im Format (-)hhmm, (-)hmm oder (-)mm eingeben.";
     const HELP_TEXT_PAUSE = "Bitte im Format hhmm, hmm oder mm eingeben.";
-    const HELP_TEXT_TOO_MUCH_OVERTIME = `Mehr als ${new Time(MAX_WORK_TIME - DEFAULT_WORK_TIME)}h Überstunden sind nicht zulässig.`;
-    const HELP_TEXT_TOO_FEW_OVERTIME = `Mehr als ${new Time(DEFAULT_WORK_TIME)}h abzubauende Stunden sind nicht zulässig.`;
+    const HELP_TEXT_TOO_MUCH_OVERTIME = "Mehr als 2:24h Überstunden sind nicht zulässig."//`Mehr als ${new Time(MAX_WORK_TIME - DEFAULT_WORK_TIME)}h Überstunden sind nicht zulässig.`;
+    const HELP_TEXT_TOO_FEW_OVERTIME = "Mehr als 7:36h abzubauende Stunden sind nicht zulässig."//`Mehr als ${new Time(DEFAULT_WORK_TIME)}h abzubauende Stunden sind nicht zulässig.`;
     const HELP_TEXT_TOO_EARLY = "Vor 6:00 Uhr darf nicht begonnen werden.";
     const HELP_TEXT_TOO_LATE = "Es darf nicht länger als bis 20:00 Uhr gearbeitet werden.";
 </script>
@@ -428,7 +401,7 @@
         width: 700px;
         margin-left: auto;
         margin-right: auto;
-        border-radius: 5px;
+        border-radius: 50px;
         background-color: rgba(255, 255, 255, .5)
     }
 
@@ -441,10 +414,6 @@
 
     section {
         padding: 0 20px 20px 20px
-    }
-
-    #endtime {
-        text-align: right !important
     }
 
     #progressbar {
