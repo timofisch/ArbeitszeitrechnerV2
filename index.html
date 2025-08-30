@@ -57,8 +57,8 @@
 						</div>
 						<button class="custom-file-upload child" style="color: #e50000" id="resetBackground">Hintergrund zurücksetzen</button>
 					</div>
-					<p id=countdown>00:00:00<p id=overtimecounter>
-                    <a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a>
+					<p id=countdown>00:00:00<p id=overtimecounter></p></p>
+                    <p><a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a></p>
 				</section>
 			</div><span id=progressbar></span>
 			<div id=progressnumber><span id=percentnumber class=blur></span></div>
@@ -95,6 +95,9 @@
     const inputBackgroundMode = document.getElementById("backgroundMode")
     const inputBackgroundRepeat = document.getElementById("backgroundRepeat")
     const inputBackgroundReset = document.getElementById("resetBackground")
+
+    const countdownElement = document.getElementById("countdown")
+    const overtimeCounter = document.getElementById("overtimecounter")
 
     // ------------------ Event Listener ------------------
     window.addEventListener("load", onLoad)
@@ -133,6 +136,7 @@
             if(arrival) {
                 updateEndtime()
                 updateWorktime("overtime")
+                startCountdown()
             }
         }
         else
@@ -166,10 +170,12 @@
             inputOvertime.value = ``
             localStorage.setItem(LS_OVERTIME, 0)
         }
-
-        updateWorktime("overtime")
-        updatePausetime()
-        updateEndtime()
+        
+        if(inputArrival.value != "") {
+            updateWorktime("overtime")
+            updatePausetime()
+            updateEndtime()
+        }
     }
 
     function onChangePause() {
@@ -216,10 +222,12 @@
             inputEndtime.value = ``
         }
 
-        updateWorktime("endtime")
-        updateOvertime()
-        updatePausetime()
-        updateWorktime("endtime")
+        if(inputArrival.value != "") {
+            updateWorktime("endtime")
+            updateOvertime()
+            updatePausetime()
+            updateWorktime("endtime")
+        }
     }
 
     function onChangeWorktime() {
@@ -231,9 +239,11 @@
             inputWorktime.value = ``
         }
 
-        updatePausetime()
-        updateOvertime()
-        updateEndtime()
+        if(inputArrival.value != "") {
+            updatePausetime()
+            updateOvertime()
+            updateEndtime()
+        }
     }
 
     // ------------------ Input Update Calculations ------------------
@@ -246,6 +256,8 @@
 
         const time = getDisplayedTime(endtime)
         inputEndtime.value = `${time.hrs}:${time.min}`
+
+        startCountdown()
     }
 
     function updateWorktime(e) {        //e: "" for default; "overtime" for calculation with overtime; "endtime" for calculation with endtime
@@ -294,6 +306,10 @@
         return new Date(d).toISOString().split("T")[0]
     }
 
+    function getISOTime(d) {
+        return new Date(d).toISOString().split("T")[1].split(".")[0]
+    }
+
     function updateLastChange() {
         localStorage.setItem(LS_LAST_TIME_UPDATE, getISODate(new Date()))
     }
@@ -308,6 +324,10 @@
         localStorage.setItem(LS_ARRIVAL, 0)
         localStorage.setItem(LS_OVERTIME, 0)
         localStorage.setItem(LS_PAUSE, 0)
+
+        clearInterval(timer)
+        overtimeCounter.innerHTML = ``
+        countdownElement.innerHTML = `00:00:00`
     }
 
     function convertInput(str) {
@@ -464,8 +484,73 @@
         }
     }
 
-    // ------------------ Visuals ------------------
-    
+    function getTotalSeconds(t) {
+        let str = t.split(":")
+        let sec = 0
+
+        for(let i = 0; i < str.length; i++)
+            str[i] *= 1
+
+        if(str[0] > 0)
+            sec += str[0] * 3600
+
+        if(str[1] > 0)
+            sec += str[1] * 60
+
+        if(str[2] > 0)
+            sec += str[2]
+
+        return sec
+    }
+
+    function getDisplayedTimeS(sec) {
+        sec *= 1
+
+        if(sec != 0) {
+            let seconds
+            let minutes = Math.floor(sec / 60)
+            const hours = Math.floor(minutes / 60)
+
+            if(minutes > 0)
+                seconds = sec % (minutes * 60)
+            else
+                seconds = sec
+
+            if(hours > 0)
+                minutes = minutes % (hours * 60)
+
+            return {
+                hrs: `${String(hours).padStart(2, `0`)}`,
+                min: `${String(minutes).padStart(2, `0`)}`,
+                sec: `${String(seconds).padStart(2, `0`)}`
+            }
+        }
+    }
+
+    // ------------------ Timer ------------------
+    let timer
+
+    function startCountdown() {
+        clearInterval(timer)
+        
+        timer = setInterval(() => {
+            const secsNow = getTotalSeconds(getISOTime(new Date()))
+            const secsEndtime = getTotalMinutes(inputEndtime.value) * 60
+
+            const diff = secsEndtime - secsNow
+            
+            if(diff > 0) {
+                const timeDiff = getDisplayedTimeS(diff)
+                countdownElement.innerHTML = `${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
+                overtimeCounter.innerHTML = ``
+            }
+            else {
+                const timeDiff = getDisplayedTimeS(-diff)
+                countdownElement.innerHTML = `Feierabend!`
+                overtimeCounter.innerHTML = `${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
+            }
+        }, 1000)
+    }
 
     // ------------------ Texts ------------------
     const HELP_TEXT_ARRIVAL = "Bitte im Format hhmm oder hmm eingeben.";
@@ -519,6 +604,8 @@
 
     #reportBug {
         font-size: 16px;
+        text-align: center;
+        margin-left: calc(50% - 38.7px);
     }
 	
 	#backgroundControl {
