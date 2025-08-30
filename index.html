@@ -29,10 +29,9 @@
 							<p>Arbeitszeit<p><input id=worktime name=worktime placeholder=hhmm/hmm> <p><span id=worktimehelp
 										class=helptext></span>
 						</div>
-						<div class=tableRow>
-							<p>Pause<p><span id=pauseinput></span> <input id=pausetime name=points max=59 min=0 step=1
-										type=range value=30>
-									<p><span id=pausewarning class=helptext></span>
+                        <div class=tableRow>
+							<p>Pause<p><input id=pausetime name=pausetime placeholder=hhmm/hmm/mm> <p><span id=pausewarning
+										class=helptext></span>
 						</div>
 					</div>
 					<div class=tableRow id=backgroundControl>
@@ -40,25 +39,26 @@
 							<label for="inputFileToLoad" class="custom-file-upload">
 								Hintergrundbild wählen
 							</label>
-							<input id="inputFileToLoad" type="file" onchange="encodeImageFileAsURL()"/>
+							<input id="inputFileToLoad" type="file"/>
 						</div>
 						<div>
-							<select id=backgroundMode class="custom-file-upload child" onchange="backgroundModeChanged()">
+							<select id=backgroundMode class="custom-file-upload child">
 								<option value="auto">Auto</option>
 								<option value="length">Length</option>
 								<option value="cover">Cover</option>
 								<option value="contain">Contain</option>
 							</select>
-							<select id=backgroundRepeat class="custom-file-upload child" onchange="backgroundModeChanged()">
+							<select id=backgroundRepeat class="custom-file-upload child">
 								<option value="no-repeat">No repeat</option>
 								<option value="repeat">Repeat</option>
 								<option value="repeat-x">Repeat-X</option>
 								<option value="repeat-y">Repeat-Y</option>
 							</select>
 						</div>
-						<button onclick="resetBackground()" class="custom-file-upload child" style="color: #e50000">Hintergrund zurücksetzen</button>
+						<button class="custom-file-upload child" style="color: #e50000" id="resetBackground">Hintergrund zurücksetzen</button>
 					</div>
 					<p id=countdown>00:00:00<p id=overtimecounter>
+                    <a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a>
 				</section>
 			</div><span id=progressbar></span>
 			<div id=progressnumber><span id=percentnumber class=blur></span></div>
@@ -68,176 +68,406 @@
 
 <script>
     // -------------- Default values ---------------
-	const DEFAULT_WORK_TIME = 27360   	// 7,6h
-    const MAX_WORK_TIME = 36000       	// 10h
-    const MIN_PAUSE_6H = 1800        	// 30min
-    const MIN_PAUSE_10H = 2700        	// 45min
-    const LATEST_WORK_HOUR = 20
-    const EARLIEST_WORK_HOUR = 6
-	
-	// ------------------ Variables ------------------
-	let quittingTime
+    const DEFAULT_WORK_TIME = getTotalMinutes("07:36")   	// 7,6h
+    const MAX_WORK_TIME = getTotalMinutes("10:00")       	// 10h
+    const MIN_PAUSE_6H = getTotalMinutes("00:30")        	// 30min
+    const MIN_PAUSE_9H = getTotalMinutes("00:45")        	// 45min
+    const LATEST_WORK_HOUR = getTotalMinutes("20:30")
+    const EARLIEST_WORK_HOUR = getTotalMinutes("5:30")
 
     // -------------- Local Storage Keys ---------------
     const LS_ARRIVAL = "time_arrival"
     const LS_OVERTIME = "time_overtime"
-	const LS_LAST_TIME_UPDATE = "time_lastUpdate"
-	const LS_PAUSE = "time_pause"
+    const LS_LAST_TIME_UPDATE = "time_lastUpdate"
+    const LS_PAUSE = "time_pause"
     const LS_BACKGROUND_IMG = "background_base64"
     const LS_BACKGROUND_MODE = "background_mode"
     const LS_BACKGROUND_REPEAT = "background_repeat"
-	
-	// ------------------ EventListener ------------------
-	window.addEventListener("load", onLoad)
-	document.getElementById("arrival").addEventListener("keyup", onChangeArrival)
-	document.getElementById("overtime").addEventListener("keyup", onChangeOvertime)
-	document.getElementById("pausetime").addEventListener("mousemove", onChangePause)
-	
-	// ------------------ OnLoad ------------------
-	function onLoad() {
-		
-		const lastUpdate = localStorage.getItem(LS_LAST_TIME_UPDATE)
-		
-		pullBackground()
-		
-		if(lastUpdate != getISODate(new Date())) {
-			localStorage.removeItem(LS_ARRIVAL)
-			localStorage.removeItem(LS_OVERTIME)
-			localStorage.removeItem(LS_PAUSE)
-			localStorage.removeItem(LS_LAST_TIME_UPDATE)
-		}
-		else {
-			const arrival = localStorage.getItem(LS_ARRIVAL)
-			const overtime = localStorage.getItem(LS_OVERTIME)
-			const pausetime = localStorage.getItem(LS_PAUSE)
-			
-			if(arrival)
-				document.getElementById("arrival").value = arrival
-			
-			if(overtime)
-				document.getElementById("overtime").value = overtime
-			
-			if(pausetime)
-				document.getElementById("pausetime").value = pausetime
-		}
-	}
-	
-	// ------------------ Calculations ------------------
-	function updateEndtime() {
-		const arrivalTime = localStorage.getItem(LS_ARRIVAL)
-		const overtimeTime = localStorage.getItem(LS_OVERTIME)
-		const pauseTime = localStorage.getItem(LS_PAUSE)
-		
-		endtime = arrivalTime + DEFAULT_WORK_TIME + overtimeTime + pausetime
-		document.getElementById("endtime").innerHTML = endtime
-	}
-	
-	function updateWorktime() {
-		
-	}
-	
-	function updateOvertime() {
-		
-	}
-	
-	// ------------------ Services ------------------
-	function getISODate(d) {
-		return new Date(d).toISOString().split("T")[0]
-	}
-	
-	function updateLastChange() {
-		if(!localStorage.getItem(LS_LAST_TIME_UPDATE))
-			localStorage.setItem(LS_LAST_TIME_UPDATE, getISODate(new Date()))
-	}
-	
-	function resetInputs() {
-		document.getElementById("overtime").value = ``
-		document.getElementById("endtime").value = ``
-		document.getElementById("worktime").value = ``
-		document.getElementById("pausetime").value = MIN_PAUSE_6H
-		
-		localStorage.removeItem(LS_OVERTIME)
-		localStorage.removeItem(LS_PAUSE)
-	}
-	
-	// ------------------ Input ------------------
-	function onChangeArrival() {
-		localStorage.setItem(LS_ARRIVAL, document.getElementById("arrival").value)
-		
-		updateLastChange()
-		resetInputs()
-		updateEndtime()
-	}
-	
-	function onChangeOvertime() {
-		localStorage.setItem(LS_OVERTIME, document.getElementById("overtime").value)
-		
-		updateEndtime()
-	}
-	
-	function onChangePause() {
-		localStorage.setItem(LS_PAUSE, document.getElementById("pausetime").value)
-		
-		updateEndtime()
-	}
-	
-	function onChangeEndtime() {
-		
-	}
-	
-	function onChangeWorktime() {
-		
-	}
+    
+    // ------------------ HTML Elements ------------------
+    const inputArrival = document.getElementById("arrival")
+    const inputOvertime = document.getElementById("overtime")
+    const inputPause = document.getElementById("pausetime")
+    const inputEndtime = document.getElementById("endtime")
+    const inputWorktime = document.getElementById("worktime")
+
+    const inputBackgroundFile = document.getElementById("inputFileToLoad")
+    const inputBackgroundMode = document.getElementById("backgroundMode")
+    const inputBackgroundRepeat = document.getElementById("backgroundRepeat")
+    const inputBackgroundReset = document.getElementById("resetBackground")
+
+    // ------------------ Event Listener ------------------
+    window.addEventListener("load", onLoad)
+    inputArrival.addEventListener("change", onChangeArrival)
+    inputOvertime.addEventListener("change", onChangeOvertime)
+    inputEndtime.addEventListener("change", onChangeEndtime)
+    inputWorktime.addEventListener("change", onChangeWorktime)
+    inputPause.addEventListener("change", onChangePause)
+
+    inputBackgroundFile.addEventListener("change", encodeImageFileAsURL)
+    inputBackgroundMode.addEventListener("change", backgroundModeChanged)
+    inputBackgroundRepeat.addEventListener("change", backgroundModeChanged)
+    inputBackgroundReset.addEventListener("click", resetBackground)
+
+    // ------------------ OnLoad ------------------
+    function onLoad() {
+        const lastUpdate = localStorage.getItem(LS_LAST_TIME_UPDATE)
+        
+        pullBackground()
+        
+        if(lastUpdate == getISODate(new Date())) {
+            const arrival = getDisplayedTime(localStorage.getItem(LS_ARRIVAL))
+            const overtime = getDisplayedTime(localStorage.getItem(LS_OVERTIME))
+            const pausetime = getDisplayedTime(localStorage.getItem(LS_PAUSE))
+            
+            if(arrival)
+                inputArrival.value = `${arrival.hrs}:${arrival.min}`
+            
+            if(overtime)
+                inputOvertime.value = `${overtime.prefix}${overtime.hrs}:${overtime.min}`
+            
+            if(pausetime)
+                inputPause.value = `${pausetime.hrs}:${pausetime.min}`
+
+
+            if(arrival) {
+                updateEndtime()
+                updateWorktime("overtime")
+            }
+        }
+        else
+            resetInputs()
+    }
+
+    // ------------------ Input ------------------
+    function onChangeArrival() {
+        if(inputArrival.value && inputArrival.value * 1 != 0) {
+            const convertedTime = convertInput(inputArrival.value)
+            localStorage.setItem(LS_ARRIVAL, getTotalMinutes(convertedTime))
+            inputArrival.value = convertedTime
+            
+            updateLastChange()
+            updateWorktime()
+            updatePausetime()
+            updateEndtime()
+        }
+        else {
+            resetInputs()
+        }
+    }
+
+    function onChangeOvertime() {
+        if(inputArrival.value != "" && inputOvertime.value * 1 != 0) {
+            const convertedTime = convertInput(inputOvertime.value)
+            localStorage.setItem(LS_OVERTIME, getTotalMinutes(convertedTime))
+            inputOvertime.value = convertedTime
+        }
+        else {
+            inputOvertime.value = ``
+            localStorage.setItem(LS_OVERTIME, 0)
+        }
+
+        updateWorktime("overtime")
+        updatePausetime()
+        updateEndtime()
+    }
+
+    function onChangePause() {
+        if(inputArrival.value != "") {
+            const minTotalMinutes = getMinPausetime()
+            const minPausetime = getDisplayedTime(minTotalMinutes)
+            
+            if(inputPause.value * 1 <= 0) {
+                localStorage.setItem(LS_PAUSE, minTotalMinutes)
+
+                if(minTotalMinutes > 0)
+                    inputPause.value = `${minPausetime.hrs}:${minPausetime.min}`
+                else
+                    inputPause.value = ``
+            }
+            else {
+                const convertedTime = convertInput(inputPause.value)
+                const totalMinutes = getTotalMinutes(convertedTime)
+
+                if(totalMinutes >= minTotalMinutes) {
+                    localStorage.setItem(LS_PAUSE, totalMinutes)
+                    inputPause.value = convertedTime
+                }
+                else {
+                    localStorage.setItem(LS_PAUSE, minTotalMinutes)
+                    inputPause.value = `${minPausetime.hrs}:${minPausetime.min}`
+                }
+            }
+
+            updateEndtime()
+        }
+        else {
+            inputPause.value = ``
+            localStorage.setItem(LS_PAUSE, 0)
+        }
+    }
+
+    function onChangeEndtime() {
+        if(inputArrival.value != "" && inputEndtime.value * 1 != 0) {
+            const convertedTime = convertInput(inputEndtime.value)
+            inputEndtime.value = convertedTime
+        }
+        else {
+            inputEndtime.value = ``
+        }
+
+        updateWorktime("endtime")
+        updateOvertime()
+        updatePausetime()
+        updateWorktime("endtime")
+    }
+
+    function onChangeWorktime() {
+        if(inputArrival.value != "" && inputWorktime.value * 1 != 0) {
+            const convertedTime = convertInput(inputWorktime.value)
+            inputWorktime.value = convertedTime
+        }
+        else {
+            inputWorktime.value = ``
+        }
+
+        updatePausetime()
+        updateOvertime()
+        updateEndtime()
+    }
+
+    // ------------------ Input Update Calculations ------------------
+    function updateEndtime() {
+        const arrivalTime = localStorage.getItem(LS_ARRIVAL) * 1
+        const overtimeTime = localStorage.getItem(LS_OVERTIME) * 1
+        const pauseTime = localStorage.getItem(LS_PAUSE) * 1
+        
+        const endtime = arrivalTime + DEFAULT_WORK_TIME + overtimeTime + pauseTime
+
+        const time = getDisplayedTime(endtime)
+        inputEndtime.value = `${time.hrs}:${time.min}`
+    }
+
+    function updateWorktime(e) {        //e: "" for default; "overtime" for calculation with overtime; "endtime" for calculation with endtime
+        let worktime
+
+        if(e == "endtime")
+            worktime = getTotalMinutes(inputEndtime.value) - localStorage.getItem(LS_ARRIVAL) - localStorage.getItem(LS_PAUSE)
+        else if(e == "overtime")
+            worktime = DEFAULT_WORK_TIME + localStorage.getItem(LS_OVERTIME) * 1
+        else
+            worktime = DEFAULT_WORK_TIME
+
+        const time = getDisplayedTime(worktime)
+        inputWorktime.value = `${time.hrs}:${time.min}`
+    }
+
+    function updateOvertime() {
+        const worktime = getTotalMinutes(inputWorktime.value)
+
+        const overtime = worktime - DEFAULT_WORK_TIME
+        localStorage.setItem(LS_OVERTIME, overtime)
+
+        if(overtime != 0) {
+            const time = getDisplayedTime(overtime)
+            inputOvertime.value = `${time.prefix}${time.hrs}:${time.min}`
+        }
+        else
+            inputOvertime.value = ``
+    }
+
+    function updatePausetime() {
+        const pausetime = getMinPausetime()
+
+        localStorage.setItem(LS_PAUSE, pausetime)
+
+        if(pausetime > 0) {
+            const time = getDisplayedTime(pausetime)
+            inputPause.value = `${time.hrs}:${time.min}`
+        }
+        else
+            inputPause.value = ``
+    }
+
+    // ------------------ Services ------------------
+    function getISODate(d) {
+        return new Date(d).toISOString().split("T")[0]
+    }
+
+    function updateLastChange() {
+        localStorage.setItem(LS_LAST_TIME_UPDATE, getISODate(new Date()))
+    }
+
+    function resetInputs() {
+        inputArrival.value = ``
+        inputOvertime.value = ``
+        inputEndtime.value = ``
+        inputWorktime.value = ``
+        inputPause.value = ``
+
+        localStorage.setItem(LS_ARRIVAL, 0)
+        localStorage.setItem(LS_OVERTIME, 0)
+        localStorage.setItem(LS_PAUSE, 0)
+    }
+
+    function convertInput(str) {
+        if(str) {
+            let min = 0
+
+            if(!str.includes(":")) {
+                let neg = false
+
+                if(str.startsWith("-")) {
+                    str = str.slice(1)
+                    neg = true
+                }
+
+                const s = str.split("")
+
+                if(s.length == 4)
+                    min = ((s[0] + s[1]) * 60) + (s[2] + s[3]) * 1
+                else if(s.length == 3)
+                    min = (s[0] * 60) + (s[1] + s[2]) * 1
+                else if(s.length == 2)
+                    min = (s[0] + s[1]) * 1
+                else if(s.length == 1)
+                    min = s[0] * 1
+
+                if(neg)
+                    min *= -1
+            }
+            else {
+                min = getTotalMinutes(str)
+            }
+
+            const time = getDisplayedTime(min)
+            
+            return `${time.prefix}${time.hrs}:${time.min}`
+        }
+        else
+            return ""
+    }
+
+    function getMinPausetime() {
+        const worktime = getTotalMinutes(inputWorktime.value)
+        let pausetime = 0
+
+        if(worktime > 9 * 60)
+            pausetime = MIN_PAUSE_9H
+        else if(worktime > 6 * 60)
+            pausetime = MIN_PAUSE_6H
+
+        return pausetime
+    }
 
     // ------------------ Background ------------------
-	function pullBackground() {
+    function pullBackground() {
         const img = localStorage.getItem(LS_BACKGROUND_IMG)
-		const mode = localStorage.getItem(LS_BACKGROUND_MODE)
-		const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
-		
+        const mode = localStorage.getItem(LS_BACKGROUND_MODE)
+        const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
+        
         if (img)
-			document.body.style.backgroundImage = `url('${img}')`
-		
+            document.body.style.backgroundImage = `url('${img}')`
+        
         if (img && mode) {
-			document.body.style.backgroundMode = mode
-			document.getElementById("backgroundMode").value = mode
-			
-			document.body.style.backgroundRepeat = repeat
-			document.getElementById("backgroundRepeat").value = repeat
-		}
+            document.body.style.backgroundSize = mode
+            inputBackgroundMode.value = mode
+            
+            document.body.style.backgroundRepeat = repeat
+            inputBackgroundRepeat.value = repeat
+        }
     }
 
     function backgroundModeChanged() {
-        localStorage.setItem(LS_BACKGROUND_MODE, document.getElementById("backgroundMode").value)
-        localStorage.setItem(LS_BACKGROUND_REPEAT, document.getElementById("backgroundRepeat").value)
-		
+        localStorage.setItem(LS_BACKGROUND_MODE, inputBackgroundMode.value)
+        localStorage.setItem(LS_BACKGROUND_REPEAT, inputBackgroundRepeat.value)
+        
         pullBackground()
     }
 
     function resetBackground() {
-        localStorage.removeItem(LS_BACKGROUND_IMG)
-        localStorage.removeItem(LS_BACKGROUND_MODE)
-        localStorage.removeItem(LS_BACKGROUND_REPEAT)
-		
-        location.reload()
+        if(confirm(`Möchtest du wirklich den Hintergrund und die Einstellungen für diesen zurücksetzen?`)) {
+            localStorage.removeItem(LS_BACKGROUND_IMG)
+            localStorage.removeItem(LS_BACKGROUND_MODE)
+            localStorage.removeItem(LS_BACKGROUND_REPEAT)
+            
+            location.reload()
+        }
     }
 
     function encodeImageFileAsURL() {
-        const file = document.getElementById("inputFileToLoad").files[0]
+        const file = inputBackgroundFile.files[0]
         
-		if (!file) return
+        if (!file) return
 
         const reader = new FileReader()
-		
+        
         reader.onload = e => {
             localStorage.setItem(LS_BACKGROUND_IMG, e.target.result)
             pullBackground()
         }
-		
+        
         reader.readAsDataURL(file)
     }
 
-    // ------------------ Texte ------------------
+    // ------------------ Time ------------------
+    function getTotalMinutes(t) {
+        if(t) {
+            let str
+            let neg = false
+            let min = 0
+            
+            str = t.split(`:`)
+
+            if(str[0].startsWith("-")) {
+                str[0] = str[0].slice(1)
+                neg = true
+            }
+
+            for(let i = 0; i < str.length; i++)
+                str[i] *= 1
+
+            if(str.length == 1)
+                min = str[0]
+            else if(str.length == 2)
+                min = (str[0] * 60) + str[1]
+
+            
+            if(neg)
+                min *= -1
+
+            return min
+        }
+        else
+            return 0
+    }
+
+    function getDisplayedTime(min) {
+        min *= 1
+
+        if(min && min != 0) {
+            let prefix = ``
+            
+            if(min < 0) {
+                prefix = `-`
+                min *= -1
+            }
+            
+            const hours = Math.floor(min / 60)
+            const minutes = min - (hours * 60)
+
+            return {
+                hrs: `${String(hours).padStart(2, `0`)}`,
+                min: `${String(minutes).padStart(2, `0`)}`,
+                prefix: `${prefix}`
+            }
+        }
+    }
+
+    // ------------------ Visuals ------------------
+    
+
+    // ------------------ Texts ------------------
     const HELP_TEXT_ARRIVAL = "Bitte im Format hhmm oder hmm eingeben.";
     const HELP_TEXT_OVERTIME = "Bitte im Format (-)hhmm, (-)hmm oder (-)mm eingeben.";
     const HELP_TEXT_PAUSE = "Bitte im Format hhmm, hmm oder mm eingeben.";
@@ -274,7 +504,7 @@
     #part1 {
         background-color: rgba(0, 0, 0, 0);
         padding-top: 30px;
-        margin: 0
+        margin: 0;
     }
 
     #part2 {
@@ -285,6 +515,10 @@
         margin-top: -50px;
         padding: 0;
         height: 100%
+    }
+
+    #reportBug {
+        font-size: 16px;
     }
 	
 	#backgroundControl {
@@ -373,21 +607,6 @@
         padding: 6px;
         width: 290px;
         border-radius: 5px
-    }
-
-    input#pausetime,
-    input#pausetime:focus,
-    input#pausetime:hover {
-        background-color: rgba(0, 0, 0, 0);
-        padding: 0;
-        box-shadow: none;
-        border: none;
-        width: 200px
-    }
-
-    #pauseinput {
-        display: inline-block;
-        width: 70px
     }
 
     input:focus,
