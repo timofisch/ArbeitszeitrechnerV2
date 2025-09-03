@@ -148,6 +148,7 @@
     function onChangeArrival() {
         const val = inputArrival.value
 
+        if(((val.length >= 3 && val.length <= 4) || (val * 1 >= EARLIEST_WORK_HOUR / 60 && val * 1 < LATEST_WORK_HOUR / 60)) && !isNaN(val * 1)) {
             if(val && val * 1 != 0) {
                 let convertedTime
 
