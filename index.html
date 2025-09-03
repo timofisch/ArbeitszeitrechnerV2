@@ -55,7 +55,7 @@
 								<option value="repeat-y">Repeat-Y</option>
 							</select>
 						</div>
-						<button class="custom-file-upload child" style="color: #e50000" id="resetBackground">Hintergrund zurücksetzen</button>
+						<button class="custom-file-upload child" id="resetBackground">Hintergrund zurücksetzen</button>
 					</div>
 					<p id=countdown>00:00:00<p id=overtimecounter></p></p>
                     <p><a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a></p>
@@ -227,6 +227,7 @@
             updateOvertime()
             updatePausetime()
             updateWorktime("endtime")
+            startCountdown()
         }
     }
 
@@ -307,7 +308,7 @@
     }
 
     function getISOTime(d) {
-        return new Date(d).toISOString().split("T")[1].split(".")[0]
+        return new Date(d).toLocaleTimeString()
     }
 
     function updateLastChange() {
@@ -534,9 +535,10 @@
     function startCountdown() {
         clearInterval(timer)
         
+        const secsEndtime = getTotalMinutes(inputEndtime.value) * 60
+
         timer = setInterval(() => {
             const secsNow = getTotalSeconds(getISOTime(new Date()))
-            const secsEndtime = getTotalMinutes(inputEndtime.value) * 60
 
             const diff = secsEndtime - secsNow
             
@@ -548,10 +550,10 @@
                 document.title = `${showedString} | Arbeitszeitrechner`
             }
             else {
-                const timeDiff = getDisplayedTimeS(-diff)
+                document.title = `Feierabend! | Arbeitszeitrechner`
                 countdownElement.innerHTML = `Feierabend!`
-                overtimeCounter.innerHTML = `${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
-                document.title = `Feierabend | Arbeitszeitrechner`
+                const timeDiff = getDisplayedTimeS(-diff)
+                overtimeCounter.innerHTML = `Überstunden: ${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
             }
         }, 1000)
     }
@@ -567,6 +569,11 @@
 </script>
 
 <style>
+    :root {
+        --red: #ee3e3e;
+        --inputBack: rgba(255, 255, 255, 0.5);
+    }
+
     body {
         font-family: Calibri, Helvetica, sans-serif;
 		background-color: rgba(50, 50, 50, 1);
@@ -628,6 +635,10 @@
 		width: 100px;
 		text-align: center;
 	}
+
+    #resetBackground {
+        color: #e50000;
+    }
 	
 	input[type="file"] {
         display: none;
@@ -693,7 +704,7 @@
     }
 
     input {
-        background-color: rgba(255, 255, 255, .5);
+        background-color: var(--inputBack);
         border: 0;
         padding: 6px;
         width: 290px;
@@ -868,7 +879,7 @@
         font-size: 400%;
         font-family: "Open Sans", sans-serif;
         font-weight: 300;
-        color: #e55;
+        color: var(--red);
         margin-left: auto;
         margin-right: auto;
         text-align: center;
@@ -879,7 +890,7 @@
         font-size: 150%;
         font-family: "Open Sans", sans-serif;
         font-weight: 300;
-        color: #e55;
+        color: var(--red);
         margin-left: auto;
         margin-right: auto;
         text-align: center;
