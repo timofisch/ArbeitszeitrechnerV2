@@ -204,13 +204,14 @@
                     inputPause.value = `${minPausetime.hrs}:${minPausetime.min}`
                 }
             }
-
-            updateEndtime()
         }
         else {
             inputPause.value = ``
             localStorage.setItem(LS_PAUSE, 0)
         }
+
+        updateWorktime("endtime")
+        updateOvertime()
     }
 
     function onChangeEndtime() {
@@ -621,19 +622,30 @@
 	
 	#backgroundControl {
 		display: grid;
-		grid-template-columns: 1fr 1fr 1fr;
+		grid-template-columns: 0.95fr 1fr 0.95fr;
 		width: 620px;
-		height: 32px;
+		height: 33px;
+        margin-top: 2px;
 	}
 	
 	#backgroundControl .child {
 		width: 180px;
 		text-align: center;
+        margin-left: auto;
+        margin-right: auto;
 	}
 	
 	#backgroundControl select.child {
-		width: 100px;
+        height: 33px;
 		text-align: center;
+	}
+
+    #backgroundControl select.child:first-child {
+        width: 98px;
+	}
+
+    #backgroundControl select.child:last-child {
+        width: 110px;
 	}
 
     #resetBackground {
