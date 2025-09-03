@@ -146,40 +146,34 @@
 
     // ------------------ Input ------------------
     function onChangeArrival() {
-        const val = inputArrival.value
+        if(!isNaN(inputArrival.value) && inputArrival.value != "") {
+            let convertedTime
 
-        if(((val.length >= 3 && val.length <= 4) || (val * 1 >= EARLIEST_WORK_HOUR / 60 && val * 1 < LATEST_WORK_HOUR / 60)) && !isNaN(val * 1)) {
-            if(val && val * 1 != 0) {
-                let convertedTime
+            if(inputArrival.value.length >= 3)
+                convertedTime = convertInput(inputArrival.value, "min")
+            else
+                convertedTime = convertInput(inputArrival.value, "hrs")
 
-                if(val.length >= 3)
-                    convertedTime = convertInput(val, "min")
-                else
-                    convertedTime = convertInput(val, "hrs")
+            localStorage.setItem(LS_ARRIVAL, getTotalMinutes(convertedTime))
+            inputArrival.value = convertedTime
+            
+            updateLastChange()
+            
+            if(localStorage.getItem(LS_OVERTIME) > 0)
+                updateWorktime("overtime")
+            else
+                updateWorktime("default")
 
-                localStorage.setItem(LS_ARRIVAL, getTotalMinutes(convertedTime))
-                inputArrival.value = convertedTime
-                
-                updateLastChange()
-                
-                if(localStorage.getItem(LS_OVERTIME) > 0)
-                    updateWorktime("overtime")
-                else
-                    updateWorktime("default")
-
-                updatePausetime()
-                updateEndtime()
-            }
-            else {
-                resetInputs(false)
-            }
+            updatePausetime()
+            updateEndtime()
         }
-        else if(val == "")
+        else {
             resetInputs(false)
+        }
     }
 
     function onChangeOvertime() {
-        if(inputArrival.value != "" && inputOvertime.value * 1 != 0) {
+        if(inputArrival.value && inputOvertime.value * 1 != 0) {
             const convertedTime = convertInput(inputOvertime.value, "min")
             localStorage.setItem(LS_OVERTIME, getTotalMinutes(convertedTime))
             inputOvertime.value = convertedTime
@@ -199,7 +193,7 @@
     function onChangePause() {
         const minTotalMinutes = getMinPausetime()
 
-        if(inputArrival.value != "") {
+        if(inputArrival.value) {
             const minPausetime = getDisplayedTime(minTotalMinutes)
             
             if(inputPause.value * 1 <= 0) {
@@ -241,7 +235,7 @@
     function onChangeEndtime() {
         const val = inputEndtime.value
 
-        if(inputArrival.value != "" && val * 1 != 0) {
+        if(inputArrival.value && val * 1 != 0) {
             let convertedTime
             
             if(val.length >= 3)
@@ -267,7 +261,7 @@
     function onChangeWorktime() {
         const val = inputWorktime.value
 
-        if(inputArrival.value != "" && val * 1 != 0) {
+        if(inputArrival.value && val * 1 != 0) {
             let convertedTime
 
             if(val.length >= 3)
