@@ -80,6 +80,7 @@
     const LS_OVERTIME = "time_overtime"
     const LS_LAST_TIME_UPDATE = "time_lastUpdate"
     const LS_PAUSE = "time_pause"
+    const LS_PAUSE_CHANGED = "time_pauseChanged"
     const LS_BACKGROUND_IMG = "background_base64"
     const LS_BACKGROUND_MODE = "background_mode"
     const LS_BACKGROUND_REPEAT = "background_repeat"
@@ -129,7 +130,7 @@
             if(overtime)
                 inputOvertime.value = `${overtime.prefix}${overtime.hrs}:${overtime.min}`
             
-            if(pausetime)
+            if(pausetime && arrival)
                 inputPause.value = `${pausetime.hrs}:${pausetime.min}`
 
 
@@ -140,7 +141,7 @@
             }
         }
         else
-            resetInputs()
+            resetInputs(true)
     }
 
     // ------------------ Input ------------------
@@ -151,12 +152,17 @@
             inputArrival.value = convertedTime
             
             updateLastChange()
-            updateWorktime()
+            
+            if(localStorage.getItem(LS_OVERTIME) > 0)
+                updateWorktime("overtime")
+            else
+                updateWorktime()
+
             updatePausetime()
             updateEndtime()
         }
         else {
-            resetInputs()
+            resetInputs(false)
         }
     }
 
@@ -179,8 +185,9 @@
     }
 
     function onChangePause() {
+        const minTotalMinutes = getMinPausetime()
+
         if(inputArrival.value != "") {
-            const minTotalMinutes = getMinPausetime()
             const minPausetime = getDisplayedTime(minTotalMinutes)
             
             if(inputPause.value * 1 <= 0) {
@@ -210,6 +217,11 @@
             localStorage.setItem(LS_PAUSE, 0)
         }
 
+        if(localStorage.getItem(LS_PAUSE) > minTotalMinutes)
+            localStorage.setItem(LS_PAUSE_CHANGED, true)
+        else
+            localStorage.setItem(LS_PAUSE_CHANGED, false)
+            
         updateWorktime("endtime")
         updateOvertime()
     }
@@ -291,13 +303,18 @@
     }
 
     function updatePausetime() {
-        const pausetime = getMinPausetime()
+        let pausetime = 0
 
-        localStorage.setItem(LS_PAUSE, pausetime)
+        if(localStorage.getItem(LS_PAUSE_CHANGED) == "false") {
+            pausetime = getMinPausetime()
+            localStorage.setItem(LS_PAUSE, pausetime)
+        }
+        else
+            pausetime = localStorage.getItem(LS_PAUSE)
 
         if(pausetime > 0) {
-            const time = getDisplayedTime(pausetime)
-            inputPause.value = `${time.hrs}:${time.min}`
+            const displayedPause = getDisplayedTime(pausetime)
+            inputPause.value = `${displayedPause.hrs}:${displayedPause.min}`
         }
         else
             inputPause.value = ``
@@ -316,7 +333,7 @@
         localStorage.setItem(LS_LAST_TIME_UPDATE, getISODate(new Date()))
     }
 
-    function resetInputs() {
+    function resetInputs(e) {       //e: true = reset pause too | false = don't reset pause
         inputArrival.value = ``
         inputOvertime.value = ``
         inputEndtime.value = ``
@@ -325,7 +342,11 @@
 
         localStorage.setItem(LS_ARRIVAL, 0)
         localStorage.setItem(LS_OVERTIME, 0)
-        localStorage.setItem(LS_PAUSE, 0)
+        
+        if(e || localStorage.getItem(LS_PAUSE_CHANGED) == "false") {
+            localStorage.setItem(LS_PAUSE, 0)
+            localStorage.setItem(LS_PAUSE_CHANGED, false)
+        }
 
         clearInterval(timer)
         overtimeCounter.innerHTML = ``
