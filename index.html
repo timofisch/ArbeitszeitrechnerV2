@@ -72,8 +72,8 @@
     const MAX_WORK_TIME = getTotalMinutes("10:00")       	// 10h
     const MIN_PAUSE_6H = getTotalMinutes("00:30")        	// 30min
     const MIN_PAUSE_9H = getTotalMinutes("00:45")        	// 45min
-    const LATEST_WORK_HOUR = getTotalMinutes("20:30")
-    const EARLIEST_WORK_HOUR = getTotalMinutes("5:30")
+    const LATEST_WORK_HOUR = getTotalMinutes("20:00")
+    const EARLIEST_WORK_HOUR = getTotalMinutes("06:00")
 
     // -------------- Local Storage Keys ---------------
     const LS_ARRIVAL = "time_arrival"
@@ -146,29 +146,40 @@
 
     // ------------------ Input ------------------
     function onChangeArrival() {
-        if(inputArrival.value && inputArrival.value * 1 != 0) {
-            const convertedTime = convertInput(inputArrival.value)
-            localStorage.setItem(LS_ARRIVAL, getTotalMinutes(convertedTime))
-            inputArrival.value = convertedTime
-            
-            updateLastChange()
-            
-            if(localStorage.getItem(LS_OVERTIME) > 0)
-                updateWorktime("overtime")
-            else
-                updateWorktime()
+        const val = inputArrival.value
 
-            updatePausetime()
-            updateEndtime()
+            if(val && val * 1 != 0) {
+                let convertedTime
+
+                if(val.length >= 3)
+                    convertedTime = convertInput(val, "min")
+                else
+                    convertedTime = convertInput(val, "hrs")
+
+                localStorage.setItem(LS_ARRIVAL, getTotalMinutes(convertedTime))
+                inputArrival.value = convertedTime
+                
+                updateLastChange()
+                
+                if(localStorage.getItem(LS_OVERTIME) > 0)
+                    updateWorktime("overtime")
+                else
+                    updateWorktime("default")
+
+                updatePausetime()
+                updateEndtime()
+            }
+            else {
+                resetInputs(false)
+            }
         }
-        else {
+        else if(val == "")
             resetInputs(false)
-        }
     }
 
     function onChangeOvertime() {
         if(inputArrival.value != "" && inputOvertime.value * 1 != 0) {
-            const convertedTime = convertInput(inputOvertime.value)
+            const convertedTime = convertInput(inputOvertime.value, "min")
             localStorage.setItem(LS_OVERTIME, getTotalMinutes(convertedTime))
             inputOvertime.value = convertedTime
         }
@@ -199,7 +210,7 @@
                     inputPause.value = ``
             }
             else {
-                const convertedTime = convertInput(inputPause.value)
+                const convertedTime = convertInput(inputPause.value, "min")
                 const totalMinutes = getTotalMinutes(convertedTime)
 
                 if(totalMinutes >= minTotalMinutes) {
@@ -227,8 +238,16 @@
     }
 
     function onChangeEndtime() {
-        if(inputArrival.value != "" && inputEndtime.value * 1 != 0) {
-            const convertedTime = convertInput(inputEndtime.value)
+        const val = inputEndtime.value
+
+        if(inputArrival.value != "" && val * 1 != 0) {
+            let convertedTime
+            
+            if(val.length >= 3)
+                convertedTime = convertInput(val, "min")
+            else
+                convertedTime = convertInput(val, "hrs")
+
             inputEndtime.value = convertedTime
         }
         else {
@@ -245,8 +264,16 @@
     }
 
     function onChangeWorktime() {
-        if(inputArrival.value != "" && inputWorktime.value * 1 != 0) {
-            const convertedTime = convertInput(inputWorktime.value)
+        const val = inputWorktime.value
+
+        if(inputArrival.value != "" && val * 1 != 0) {
+            let convertedTime
+
+            if(val.length >= 3)
+                convertedTime = convertInput(val, "min")
+            else
+                convertedTime = convertInput(val, "hrs")
+
             inputWorktime.value = convertedTime
         }
         else {
@@ -274,7 +301,7 @@
         startCountdown()
     }
 
-    function updateWorktime(e) {        //e: "" for default; "overtime" for calculation with overtime; "endtime" for calculation with endtime
+    function updateWorktime(e) {        //e: "default" for default; "overtime" for calculation with overtime; "endtime" for calculation with endtime
         let worktime
 
         if(e == "endtime")
@@ -354,39 +381,46 @@
         document.title = `Arbeitszeitrechner`
     }
 
-    function convertInput(str) {
+    function convertInput(str, e) {     //e: "min" = 1 or 2 digits is minutes | "hrs" = 1 or 2 digits is hours
         if(str) {
-            let min = 0
+            if(e == "min") {
+                let min = 0
 
-            if(!str.includes(":")) {
-                let neg = false
+                if(!str.includes(":")) {
+                    let neg = false
 
-                if(str.startsWith("-")) {
-                    str = str.slice(1)
-                    neg = true
+                    if(str.startsWith("-")) {
+                        str = str.slice(1)
+                        neg = true
+                    }
+
+                    const s = str.split("")
+
+                    if(s.length == 4)
+                        min = ((s[0] + s[1]) * 60) + (s[2] + s[3]) * 1
+                    else if(s.length == 3)
+                        min = (s[0] * 60) + (s[1] + s[2]) * 1
+                    else if(s.length == 2)
+                        min = (s[0] + s[1]) * 1
+                    else if(s.length == 1)
+                        min = s[0] * 1
+
+                    if(neg)
+                        min *= -1
+                }
+                else {
+                    min = getTotalMinutes(str)
                 }
 
-                const s = str.split("")
-
-                if(s.length == 4)
-                    min = ((s[0] + s[1]) * 60) + (s[2] + s[3]) * 1
-                else if(s.length == 3)
-                    min = (s[0] * 60) + (s[1] + s[2]) * 1
-                else if(s.length == 2)
-                    min = (s[0] + s[1]) * 1
-                else if(s.length == 1)
-                    min = s[0] * 1
-
-                if(neg)
-                    min *= -1
+                const time = getDisplayedTime(min)
+                
+                return `${time.prefix}${time.hrs}:${time.min}`
             }
-            else {
-                min = getTotalMinutes(str)
-            }
+            else if(e == "hrs") {
+                const value = str * 1
 
-            const time = getDisplayedTime(min)
-            
-            return `${time.prefix}${time.hrs}:${time.min}`
+                return `${String(value).padStart(2, 0)}:00`
+            }
         }
         else
             return ""
