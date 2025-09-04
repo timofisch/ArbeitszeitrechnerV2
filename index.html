@@ -146,7 +146,7 @@
 
     // ------------------ Input Events ------------------
     function onChangeArrival() {
-        if(!isNaN(inputArrival.value) && inputArrival.value != "") {
+        if(inputArrival.value != "" && inputArrival.value * 1 != 0) {
             let convertedTime
 
             if(inputArrival.value.length >= 3)
@@ -628,6 +628,7 @@
     body {
         font-family: Calibri, Helvetica, sans-serif;
 		background-color: rgba(50, 50, 50, 1);
+		background-repeat: no-repeat;
     }
 
     body,
