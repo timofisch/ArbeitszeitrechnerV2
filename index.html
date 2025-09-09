@@ -39,7 +39,7 @@
 							<label for="inputFileToLoad" class="custom-file-upload">
 								Hintergrundbild wählen
 							</label>
-							<input id="inputFileToLoad" type="file"/>
+							<input id="inputFileToLoad" type="file" accept="image/*"/>
 						</div>
 						<div>
 							<select id=backgroundMode class="custom-file-upload child">
@@ -81,7 +81,6 @@
     const LS_LAST_TIME_UPDATE = "time_lastUpdate"
     const LS_PAUSE = "time_pause"
     const LS_PAUSE_CHANGED = "time_pauseChanged"
-    const LS_BACKGROUND_IMG = "background_base64"
     const LS_BACKGROUND_MODE = "background_mode"
     const LS_BACKGROUND_REPEAT = "background_repeat"
     
@@ -102,22 +101,26 @@
 
     // ------------------ Event Listener ------------------
     window.addEventListener("load", onLoad)
+
     inputArrival.addEventListener("change", onChangeArrival)
     inputOvertime.addEventListener("change", onChangeOvertime)
     inputEndtime.addEventListener("change", onChangeEndtime)
     inputWorktime.addEventListener("change", onChangeWorktime)
     inputPause.addEventListener("change", onChangePause)
 
-    inputBackgroundFile.addEventListener("change", encodeImageFileAsURL)
+    inputBackgroundFile.addEventListener("change", saveBackground)
     inputBackgroundMode.addEventListener("change", backgroundModeChanged)
     inputBackgroundRepeat.addEventListener("change", backgroundModeChanged)
     inputBackgroundReset.addEventListener("click", resetBackground)
+
+    // ------------------ Variables ------------------
+    let timer
 
     // ------------------ OnLoad ------------------
     function onLoad() {
         const lastUpdate = localStorage.getItem(LS_LAST_TIME_UPDATE)
         
-        pullBackground()
+        loadBackground()
         
         if(lastUpdate == getISODate(new Date())) {
             const arrival = getDisplayedTime(localStorage.getItem(LS_ARRIVAL))
@@ -433,54 +436,36 @@
         return pausetime
     }
 
-    // ------------------ Background ------------------
-    function pullBackground() {
-        const img = localStorage.getItem(LS_BACKGROUND_IMG)
-        const mode = localStorage.getItem(LS_BACKGROUND_MODE)
-        const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
-        
-        if (img)
-            document.body.style.backgroundImage = `url('${img}')`
-        
-        if (img && mode) {
-            document.body.style.backgroundSize = mode
-            inputBackgroundMode.value = mode
-            
-            document.body.style.backgroundRepeat = repeat
-            inputBackgroundRepeat.value = repeat
-        }
-    }
-
+    // ------------------ Background Settings ------------------
     function backgroundModeChanged() {
         localStorage.setItem(LS_BACKGROUND_MODE, inputBackgroundMode.value)
         localStorage.setItem(LS_BACKGROUND_REPEAT, inputBackgroundRepeat.value)
+        //localStorage.setItem(LS_BACKGROUND_POSITION, )
         
-        pullBackground()
+        updateBackgroundSettings()
     }
 
     function resetBackground() {
         if(confirm(`Möchtest du wirklich den Hintergrund und die Einstellungen für diesen zurücksetzen?`)) {
-            localStorage.removeItem(LS_BACKGROUND_IMG)
             localStorage.removeItem(LS_BACKGROUND_MODE)
             localStorage.removeItem(LS_BACKGROUND_REPEAT)
-            
+            localStorage.removeItem(LS_BACKGROUND_POSITION)
+            deleteBackground()
             location.reload()
         }
     }
 
-    function encodeImageFileAsURL() {
-        const file = inputBackgroundFile.files[0]
+    function updateBackgroundSettings() {
+        const mode = localStorage.getItem(LS_BACKGROUND_MODE)
+        const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
         
-        if (!file) return
-
-        const reader = new FileReader()
-        
-        reader.onload = e => {
-            localStorage.setItem(LS_BACKGROUND_IMG, e.target.result)
-            pullBackground()
+        if(mode) {
+            document.body.style.backgroundSize = mode
         }
-        
-        reader.readAsDataURL(file)
+
+        if(repeat) {
+            document.body.style.backgroundRepeat = repeat
+        }
     }
 
     // ------------------ Time ------------------
@@ -581,8 +566,6 @@
     }
 
     // ------------------ Timer ------------------
-    let timer
-
     function startCountdown() {
         clearInterval(timer)
         
@@ -607,6 +590,84 @@
                 overtimeCounter.innerHTML = `Überstunden: ${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
             }
         }, 1000)
+    }
+
+    // ------------------ IndexedDB - Background Image ------------------
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("backgroundDB", 1)
+
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result
+                
+                if (!db.objectStoreNames.contains("images")) {
+                    db.createObjectStore("images")
+                }
+            }
+
+            request.onsuccess = () => resolve(request.result)
+            request.onerror = () => reject(request.error)
+        })
+    }
+
+    async function saveBackground() {
+        const file = inputBackgroundFile.files[0]
+
+        if(file) {
+            const db = await initDB()
+        
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction("images", "readwrite")
+                const store = tx.objectStore("images")
+                
+                store.put(file, "background")
+
+                tx.oncomplete = () => resolve()
+                tx.onerror = () => reject(tx.error)
+
+                loadBackground()
+            })
+        }
+    }
+
+    async function loadBackground() {
+        const db = await initDB()
+        
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("images", "readonly")
+            const store = tx.objectStore("images")
+            const request = store.get("background")
+
+            request.onsuccess = () => {
+                const file = request.result
+                if (file) {
+                    const url = URL.createObjectURL(file)
+                    document.body.style.backgroundImage = `url(${url})`
+                }
+                resolve(file)
+            }
+            request.onerror = () => reject(request.error)
+
+            updateBackgroundSettings()
+        })
+    }
+
+    async function deleteBackground() {
+        const db = await initDB()
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction("images", "readwrite")
+            const store = tx.objectStore("images")
+            const request = store.delete("background")
+
+            tx.oncomplete = () => {
+                document.body.style.backgroundImage = ""; // Hintergrund zurücksetzen
+                resolve()
+            }
+
+            tx.onerror = () => reject(tx.error)
+
+            loadBackground()
+        })
     }
 
     // ------------------ Texts ------------------
