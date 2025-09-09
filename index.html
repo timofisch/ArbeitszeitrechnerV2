@@ -44,9 +44,9 @@
 						<div>
 							<select id=backgroundMode class="custom-file-upload child">
 								<option value="auto">Auto</option>
-								<option value="length">Length</option>
 								<option value="cover">Cover</option>
 								<option value="contain">Contain</option>
+                                <option value="custom">Custom</option>
 							</select>
 							<select id=backgroundRepeat class="custom-file-upload child">
 								<option value="no-repeat">No repeat</option>
@@ -58,8 +58,11 @@
 						<div class="child">
                             <button class="custom-file-upload" id="resetBackground">Hintergrund zurücksetzen</button>
                         </div>
-                        <div class="child">
+                        <div class="child" style="grid-column: 2; grid-row: 2;">
                             <label><input id="cbxMoveBackground" type="checkbox" disabled>Hintergrund bewegen</label>
+                        </div>
+                        <div class="child" style="grid-column: 3; grid-row: 2;">
+                            <button class="custom-file-upload" id="resetBackSettings">Einstellungen löschen</button>
                         </div>
 					</div>
 					<p id=countdown>00:00:00<p id=overtimecounter></p></p>
@@ -86,9 +89,10 @@
     const LS_LAST_TIME_UPDATE = "time_lastUpdate"
     const LS_PAUSE = "time_pause"
     const LS_PAUSE_CHANGED = "time_pauseChanged"
-    const LS_BACKGROUND_MODE = "background_mode"
+    const LS_BACKGROUND_SIZE = "background_size"
     const LS_BACKGROUND_REPEAT = "background_repeat"
     const LS_BACKGROUND_POSITION = "background_position"
+    const LS_BACKGROUND_ZOOM = "background_zoom"
     
     // ------------------ HTML Elements ------------------
     const inputArrival = document.getElementById("arrival")
@@ -101,6 +105,7 @@
     const inputBackgroundMode = document.getElementById("backgroundMode")
     const inputBackgroundRepeat = document.getElementById("backgroundRepeat")
     const inputBackgroundReset = document.getElementById("resetBackground")
+    const inputBackgroundResetSettings = document.getElementById("resetBackSettings")
     const inputBackgroundMove = document.getElementById("cbxMoveBackground")
 
     const countdownElement = document.getElementById("countdown")
@@ -119,9 +124,11 @@
     inputBackgroundMode.addEventListener("change", backgroundModeChanged)
     inputBackgroundRepeat.addEventListener("change", backgroundModeChanged)
     inputBackgroundReset.addEventListener("click", resetBackground)
+    inputBackgroundResetSettings.addEventListener("click", resetBackgroundSettings)
     inputBackgroundMove.addEventListener("change", (e) => {
         if(e.target.checked) {
             document.body.addEventListener("mousedown", backMouseDown)
+            document.body.addEventListener("wheel", backScale)
 
             inputArrival.disabled = true
             inputOvertime.disabled = true
@@ -136,6 +143,7 @@
         else {
             document.body.removeEventListener("mousedown", backMouseDown)
             document.body.removeEventListener("mouseup", backMouseUp)
+            document.body.removeEventListener("wheel", backScale)
 
             inputArrival.disabled = false
             inputOvertime.disabled = false
@@ -164,6 +172,9 @@
             const overtime = getDisplayedTime(localStorage.getItem(LS_OVERTIME))
             const pausetime = getDisplayedTime(localStorage.getItem(LS_PAUSE))
             
+            const backMode = localStorage.getItem(LS_BACKGROUND_SIZE)
+            const backRepeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
+            
             if(arrival)
                 inputArrival.value = `${arrival.hrs}:${arrival.min}`
             
@@ -179,6 +190,12 @@
                 updateWorktime("overtime")
                 startCountdown()
             }
+
+            if(backMode)
+                inputBackgroundMode.value = backMode
+
+            if(backRepeat)
+                inputBackgroundRepeat.value = backRepeat
         }
         else
             resetInputs(true)
@@ -488,30 +505,53 @@
 
     // ------------------ Background Settings ------------------
     function backgroundModeChanged() {
-        localStorage.setItem(LS_BACKGROUND_MODE, inputBackgroundMode.value)
+        const selectedMode = inputBackgroundMode.value
+
+        localStorage.setItem(LS_BACKGROUND_SIZE, inputBackgroundMode.value)
+
+        if(selectedMode == "custom") {
+            const lsZoom = localStorage.getItem(LS_BACKGROUND_ZOOM)
+
+            if(!lsZoom)
+                localStorage.setItem(LS_BACKGROUND_ZOOM, 100)
+        }
+
         localStorage.setItem(LS_BACKGROUND_REPEAT, inputBackgroundRepeat.value)
-        //localStorage.setItem(LS_BACKGROUND_POSITION, )
         
         updateBackgroundSettings()
     }
 
     function resetBackground() {
-        if(confirm(`Möchtest du wirklich den Hintergrund und die Einstellungen für diesen zurücksetzen?`)) {
-            localStorage.removeItem(LS_BACKGROUND_MODE)
+        if(confirm(`Möchtest du wirklich das Hintergrundbild und die Hintergrundeinstellungen zurücksetzen?`)) {
+            localStorage.removeItem(LS_BACKGROUND_SIZE)
             localStorage.removeItem(LS_BACKGROUND_REPEAT)
             localStorage.removeItem(LS_BACKGROUND_POSITION)
+            localStorage.removeItem(LS_BACKGROUND_ZOOM)
             deleteBackground()
             location.reload()
         }
     }
 
+    function resetBackgroundSettings() {
+        if(confirm(`Möchtest du wirklich die Hintergrundeinstellungen zurücksetzen?`)) {
+            localStorage.removeItem(LS_BACKGROUND_SIZE)
+            localStorage.removeItem(LS_BACKGROUND_REPEAT)
+            localStorage.removeItem(LS_BACKGROUND_POSITION)
+            localStorage.removeItem(LS_BACKGROUND_ZOOM)
+            location.reload()
+        }
+    }
+
     function updateBackgroundSettings() {
-        const mode = localStorage.getItem(LS_BACKGROUND_MODE)
+        const mode = localStorage.getItem(LS_BACKGROUND_SIZE)
         const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
         let position = localStorage.getItem(LS_BACKGROUND_POSITION)
         
         if(mode) {
-            document.body.style.backgroundSize = mode
+            if(mode == "custom")
+                updateBackgroundSize(`${localStorage.getItem(LS_BACKGROUND_ZOOM)}%`)
+            else
+                updateBackgroundSize(mode)
         }
 
         if(repeat) {
@@ -521,6 +561,13 @@
         if(position) {
             updateBackgroundPos(arrFromIntStr(position))
         }
+    }
+
+    function updateBackgroundSize(size) {
+        if(!isNaN(size))
+            document.body.style.backgroundSize = `${size}% auto`
+        else
+            document.body.style.backgroundSize = size
     }
 
     function updateBackgroundPos(pos) {
@@ -559,6 +606,25 @@
         str = str.split(` `)
 
         localStorage.setItem(LS_BACKGROUND_POSITION, str)
+    }
+
+    function backScale(e) {
+        const changeZoom = e.deltaY / 100 * -1.7
+        let currentZoom = localStorage.getItem(LS_BACKGROUND_ZOOM) * 1
+
+        if(currentZoom <= 0)
+            currentZoom = 100 
+
+        const newZoom = Math.round((currentZoom + changeZoom)*100) / 100
+
+        if(localStorage.getItem(LS_BACKGROUND_SIZE) != "custom") {
+            localStorage.setItem(LS_BACKGROUND_SIZE, "custom")
+            updateBackgroundSettings()
+            inputBackgroundMode.value = "custom"
+        }
+
+        localStorage.setItem(LS_BACKGROUND_ZOOM, newZoom)
+        updateBackgroundSize(newZoom)
     }
 
     // ------------------ Time ------------------
@@ -858,9 +924,10 @@
         width: 110px;
 	}
 
-    #resetBackground {
+    #resetBackground, #resetBackSettings {
         color: #e50000;
         height: 33px;
+        width: 178px;
     }
 
     #cbxMoveBackground {
