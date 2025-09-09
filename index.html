@@ -55,7 +55,12 @@
 								<option value="repeat-y">Repeat-Y</option>
 							</select>
 						</div>
-						<button class="custom-file-upload child" id="resetBackground">Hintergrund zurücksetzen</button>
+						<div class="child">
+                            <button class="custom-file-upload" id="resetBackground">Hintergrund zurücksetzen</button>
+                        </div>
+                        <div class="child">
+                            <label><input id="cbxMoveBackground" type="checkbox" disabled>Hintergrund bewegen</label>
+                        </div>
 					</div>
 					<p id=countdown>00:00:00<p id=overtimecounter></p></p>
                     <p><a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a></p>
@@ -83,6 +88,7 @@
     const LS_PAUSE_CHANGED = "time_pauseChanged"
     const LS_BACKGROUND_MODE = "background_mode"
     const LS_BACKGROUND_REPEAT = "background_repeat"
+    const LS_BACKGROUND_POSITION = "background_position"
     
     // ------------------ HTML Elements ------------------
     const inputArrival = document.getElementById("arrival")
@@ -95,6 +101,7 @@
     const inputBackgroundMode = document.getElementById("backgroundMode")
     const inputBackgroundRepeat = document.getElementById("backgroundRepeat")
     const inputBackgroundReset = document.getElementById("resetBackground")
+    const inputBackgroundMove = document.getElementById("cbxMoveBackground")
 
     const countdownElement = document.getElementById("countdown")
     const overtimeCounter = document.getElementById("overtimecounter")
@@ -112,9 +119,39 @@
     inputBackgroundMode.addEventListener("change", backgroundModeChanged)
     inputBackgroundRepeat.addEventListener("change", backgroundModeChanged)
     inputBackgroundReset.addEventListener("click", resetBackground)
+    inputBackgroundMove.addEventListener("change", (e) => {
+        if(e.target.checked) {
+            document.body.addEventListener("mousedown", backMouseDown)
+
+            inputArrival.disabled = true
+            inputOvertime.disabled = true
+            inputEndtime.disabled = true
+            inputWorktime.disabled = true
+            inputPause.disabled = true
+            inputBackgroundFile.disabled = true
+            inputBackgroundMode.disabled = true
+            inputBackgroundRepeat.disabled = true
+            inputBackgroundReset.disabled = true
+        }
+        else {
+            document.body.removeEventListener("mousedown", backMouseDown)
+            document.body.removeEventListener("mouseup", backMouseUp)
+
+            inputArrival.disabled = false
+            inputOvertime.disabled = false
+            inputEndtime.disabled = false
+            inputWorktime.disabled = false
+            inputPause.disabled = false
+            inputBackgroundFile.disabled = false
+            inputBackgroundMode.disabled = false
+            inputBackgroundRepeat.disabled = false
+            inputBackgroundReset.disabled = false
+        }
+    })
 
     // ------------------ Variables ------------------
     let timer
+    let mouseStartPos
 
     // ------------------ OnLoad ------------------
     function onLoad() {
@@ -436,6 +473,19 @@
         return pausetime
     }
 
+    function arrFromIntStr(str) {
+        let result = str
+        
+        result = result.replaceAll(`[`, ``)
+        result = result.replaceAll(`]`, ``)
+        result = result.split(`,`)
+
+        result[0] *= 1
+        result[1] *= 1
+
+        return result
+    }
+
     // ------------------ Background Settings ------------------
     function backgroundModeChanged() {
         localStorage.setItem(LS_BACKGROUND_MODE, inputBackgroundMode.value)
@@ -458,6 +508,7 @@
     function updateBackgroundSettings() {
         const mode = localStorage.getItem(LS_BACKGROUND_MODE)
         const repeat = localStorage.getItem(LS_BACKGROUND_REPEAT)
+        let position = localStorage.getItem(LS_BACKGROUND_POSITION)
         
         if(mode) {
             document.body.style.backgroundSize = mode
@@ -466,6 +517,48 @@
         if(repeat) {
             document.body.style.backgroundRepeat = repeat
         }
+
+        if(position) {
+            updateBackgroundPos(arrFromIntStr(position))
+        }
+    }
+
+    function updateBackgroundPos(pos) {
+        document.body.style.backgroundPosition = `${pos[0]}px ${pos[1]}px`
+    }
+
+    function backMouseDown(e) {
+        mouseStartPos = [e.x, e.y]
+
+        document.body.addEventListener("mousemove", backMouseMove)
+        document.body.addEventListener("mouseup", backMouseUp)
+    }
+
+    function backMouseMove(e) {
+        const mousePos = [e.x, e.y]
+        let currentBackPos
+
+        const lsBackPos = localStorage.getItem(LS_BACKGROUND_POSITION)
+
+        if(lsBackPos)
+            currentBackPos = arrFromIntStr(lsBackPos)
+        else
+            currentBackPos = [0, 0]        
+
+        const posAfterMove = [mousePos[0] - mouseStartPos[0] + currentBackPos[0], mousePos[1] - mouseStartPos[1] + currentBackPos[1]]
+
+        updateBackgroundPos(posAfterMove)
+    }
+
+    function backMouseUp(e) {
+        document.body.removeEventListener("mousemove", backMouseMove)
+
+        let str = document.body.style.backgroundPosition
+
+        str = str.replaceAll(`px`, ``)
+        str = str.split(` `)
+
+        localStorage.setItem(LS_BACKGROUND_POSITION, str)
     }
 
     // ------------------ Time ------------------
@@ -641,9 +734,12 @@
             request.onsuccess = () => {
                 const file = request.result
                 if (file) {
+                    inputBackgroundMove.disabled = false
                     const url = URL.createObjectURL(file)
                     document.body.style.backgroundImage = `url(${url})`
                 }
+                else
+                    inputBackgroundMove.disabled = true
                 resolve(file)
             }
             request.onerror = () => reject(request.error)
@@ -735,6 +831,7 @@
 	#backgroundControl {
 		display: grid;
 		grid-template-columns: 0.95fr 1fr 0.95fr;
+        grid-template-rows: 1fr 1fr;
 		width: 620px;
 		height: 33px;
         margin-top: 2px;
@@ -742,6 +839,7 @@
 	
 	#backgroundControl .child {
 		width: 180px;
+        height: 33px;
 		text-align: center;
         margin-left: auto;
         margin-right: auto;
@@ -762,6 +860,13 @@
 
     #resetBackground {
         color: #e50000;
+        height: 33px;
+    }
+
+    #cbxMoveBackground {
+        width: 15px;
+        height: 15px;
+        margin: 7px 5px 0px 0px;
     }
 	
 	input[type="file"] {
@@ -1146,5 +1251,12 @@
 
     .driveongoingani {
         animation: driveongoing .8s infinite
+    }
+
+    * {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
     }
 </style>
