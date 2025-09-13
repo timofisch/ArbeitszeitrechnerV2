@@ -69,7 +69,7 @@
                     <p><a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a></p>
 				</section>
 			</div><span id=progressbar></span>
-			<div id=progressnumber><span id=percentnumber class=blur></span></div>
+			<div id=progressnumber><span id="progressNumber" class=blur></span></div>
 		</section>
 	</div>
 </body>
@@ -107,6 +107,9 @@
     const inputBackgroundReset = document.getElementById("resetBackground")
     const inputBackgroundResetSettings = document.getElementById("resetBackSettings")
     const inputBackgroundMove = document.getElementById("cbxMoveBackground")
+
+    const progressbar = document.getElementById("progressbar")
+    const progressNumber = document.getElementById("progressNumber")
 
     const countdownElement = document.getElementById("countdown")
     const overtimeCounter = document.getElementById("overtimecounter")
@@ -431,6 +434,8 @@
         overtimeCounter.innerHTML = ``
         countdownElement.innerHTML = `00:00:00`
         document.title = `Arbeitszeitrechner`
+        progressNumber.innerHTML = ``
+        progressbar.style.visibility = `hidden`
     }
 
     function convertInput(str, e) {     //e: "min" = 1 or 2 digits is minutes | "hrs" = 1 or 2 digits is hours
@@ -501,6 +506,17 @@
         result[1] *= 1
 
         return result
+    }
+
+    function getPercent(val1, val2) {
+        const rawNum = (val1 / val2) * 100
+
+        if(rawNum >= 100)
+            return 100
+        else if(rawNum <= 0)
+            return 0
+
+        return rawNum.toFixed(2) * 1
     }
 
     // ------------------ Background Settings ------------------
@@ -738,6 +754,8 @@
             if(diff > 0) {
                 const timeDiff = getDisplayedTimeS(diff)
                 const showedString = `${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
+                percent = getPercent(secsNow - localStorage.getItem(LS_ARRIVAL) * 60, getTotalMinutes(inputEndtime.value) * 60 - localStorage.getItem(LS_ARRIVAL) * 60)
+                
                 countdownElement.innerHTML = showedString
                 overtimeCounter.innerHTML = ``
                 document.title = `${showedString} | Arbeitszeitrechner`
@@ -745,9 +763,15 @@
             else {
                 document.title = `Feierabend! | Arbeitszeitrechner`
                 countdownElement.innerHTML = `Feierabend!`
+                percent = 100
+
                 const timeDiff = getDisplayedTimeS(-diff)
                 overtimeCounter.innerHTML = `Überstunden: ${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
             }
+
+            progressbar.style.visibility = `visible`
+            progressbar.style.right = `${100 - percent}%`
+            progressNumber.innerHTML = `${percent.toFixed(0)}%`
         }, 1000)
     }
 
@@ -1042,7 +1066,7 @@
         visibility: hidden
     }
 
-    #percentnumber {
+    #progressNumber {
         position: absolute;
         top: 93%;
         left: 50%;
