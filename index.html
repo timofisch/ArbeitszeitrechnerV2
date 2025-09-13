@@ -483,9 +483,14 @@
             return ""
     }
 
-    function getMinPausetime() {
-        const worktime = getTotalMinutes(inputWorktime.value)
+    function getMinPausetime(min) {     //min: Worktime in minutes
+        let worktime
         let pausetime = 0
+
+        if(!min)
+            worktime = getTotalMinutes(inputWorktime.value)
+        else
+            worktime = min
 
         if(worktime > 9 * 60)
             pausetime = MIN_PAUSE_9H
@@ -719,7 +724,7 @@
     function getDisplayedTimeS(sec) {
         sec *= 1
 
-        if(sec != 0) {
+        if(sec >= 0) {
             let seconds
             let minutes = Math.floor(sec / 60)
             const hours = Math.floor(minutes / 60)
@@ -748,9 +753,10 @@
 
         timer = setInterval(() => {
             const secsNow = getTotalSeconds(getISOTime(new Date()))
+            let percent
 
             const diff = secsEndtime - secsNow
-            
+
             if(diff > 0) {
                 const timeDiff = getDisplayedTimeS(diff)
                 const showedString = `${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
@@ -765,14 +771,42 @@
                 countdownElement.innerHTML = `Feierabend!`
                 percent = 100
 
-                const timeDiff = getDisplayedTimeS(-diff)
-                overtimeCounter.innerHTML = `Überstunden: ${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
+                let overtime = calcOvertimeCounter(secsNow, -diff)
+
+                if(overtime < 0)
+                    overtime = 0
+
+                const timeDiff = getDisplayedTimeS(overtime)
+                
+                if(!isNaN(overtime))
+                    overtimeCounter.innerHTML = `Überstunden: ${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
             }
 
             progressbar.style.visibility = `visible`
             progressbar.style.right = `${100 - percent}%`
             progressNumber.innerHTML = `${percent.toFixed(0)}%`
         }, 1000)
+    }
+
+    function calcOvertimeCounter(secNow, diff) {
+        const overtime = diff / 60
+        const pause = localStorage.getItem(LS_PAUSE) * 1
+        const currPresenceTime = (secNow / 60) - localStorage.getItem(LS_ARRIVAL) * 1
+        const currWorktime = currPresenceTime - pause
+
+        const pauseNotPlanned = getMinPausetime(currWorktime) - pause
+
+        //Total pause is already calculated so no more action is needed
+        if(pause >= 45 || currWorktime < 6 * 60)
+            return Math.round(overtime * 60)
+        else {
+            if(currWorktime > 9 * 60 && currWorktime < 9 * 60 + MIN_PAUSE_9H - MIN_PAUSE_6H)
+                return Math.round((overtime - ((pauseNotPlanned - MIN_PAUSE_9H + MIN_PAUSE_6H) + currWorktime - 9 * 60)) * 60)
+            else if(currWorktime > 6 * 60 && currWorktime < 6 * 60 + MIN_PAUSE_6H)
+                return Math.round((overtime - (pauseNotPlanned + currWorktime - 6 * 60)) * 60)
+            else
+                return Math.round((overtime - pauseNotPlanned) * 60)
+        }
     }
 
     // ------------------ IndexedDB - Background Image ------------------
