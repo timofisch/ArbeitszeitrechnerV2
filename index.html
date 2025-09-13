@@ -216,7 +216,7 @@
             
             updateLastChange()
             
-            if(localStorage.getItem(LS_OVERTIME) > 0)
+            if(localStorage.getItem(LS_OVERTIME) * 1 != 0)
                 updateWorktime("overtime")
             else
                 updateWorktime("default")
