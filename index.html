@@ -191,7 +191,7 @@
             if(arrival) {
                 updateEndtime()
                 updateWorktime("overtime")
-                startCountdown()
+                countdown()
             }
 
             if(backMode)
@@ -314,7 +314,7 @@
             updateOvertime()
             updatePausetime()
             updateWorktime("endtime")
-            startCountdown()
+            countdown()
         }
     }
 
@@ -353,7 +353,7 @@
         const time = getDisplayedTime(endtime)
         inputEndtime.value = `${time.hrs}:${time.min}`
 
-        startCountdown()
+        countdown()
     }
 
     function updateWorktime(e) {        //e: "default" for default; "overtime" for calculation with overtime; "endtime" for calculation with endtime
@@ -746,7 +746,7 @@
     }
 
     // ------------------ Timer ------------------
-    function startCountdown() {
+    function countdown() {
         clearInterval(timer)
         
         const secsEndtime = getTotalMinutes(inputEndtime.value) * 60
