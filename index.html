@@ -784,7 +784,7 @@
 
             progressbar.style.visibility = `visible`
             progressbar.style.right = `${100 - percent}%`
-            progressNumber.innerHTML = `${percent.toFixed(0)}%`
+            progressNumber.innerHTML = `${Math.floor(percent)}%`
         }, 1000)
     }
 
