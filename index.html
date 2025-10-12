@@ -6,11 +6,8 @@
 <body>
 	<div id=wrapper1>
 		<section id=part1>
-			<div id=frame><a href=index.html id=logoclick>
-					<header id=title>
-						<h1>Arbeitszeitrechner</h1>
-					</header>
-				</a>
+			<div id=frame>
+				<header id=title><h1>Arbeitszeitrechner</h1></header>
 				<section id=form>
 					<div class=table>
 						<div class=tableRow>
@@ -58,6 +55,9 @@
 						<div class="child">
                             <button class="custom-file-upload" id="resetBackground">Hintergrund zurücksetzen</button>
                         </div>
+                        <div class="child" style="grid-column: 1; grid-row: 2;">
+                            <label><input id="cbxMoveCalculator" type="checkbox">Rechner bewegen</label>
+                        </div>
                         <div class="child" style="grid-column: 2; grid-row: 2;">
                             <label><input id="cbxMoveBackground" type="checkbox" disabled>Hintergrund bewegen</label>
                         </div>
@@ -93,6 +93,7 @@
     const LS_BACKGROUND_REPEAT = "background_repeat"
     const LS_BACKGROUND_POSITION = "background_position"
     const LS_BACKGROUND_ZOOM = "background_zoom"
+    const LS_CALC_POS = "calculator_position"
     
     // ------------------ HTML Elements ------------------
     const inputArrival = document.getElementById("arrival")
@@ -107,6 +108,8 @@
     const inputBackgroundReset = document.getElementById("resetBackground")
     const inputBackgroundResetSettings = document.getElementById("resetBackSettings")
     const inputBackgroundMove = document.getElementById("cbxMoveBackground")
+
+    const inputCalculatorMove = document.getElementById("cbxMoveCalculator")
 
     const progressbar = document.getElementById("progressbar")
     const progressNumber = document.getElementById("progressNumber")
@@ -142,6 +145,7 @@
             inputBackgroundMode.disabled = true
             inputBackgroundRepeat.disabled = true
             inputBackgroundReset.disabled = true
+            inputCalculatorMove.disabled = true
         }
         else {
             document.body.removeEventListener("mousedown", backMouseDown)
@@ -157,6 +161,40 @@
             inputBackgroundMode.disabled = false
             inputBackgroundRepeat.disabled = false
             inputBackgroundReset.disabled = false
+            inputCalculatorMove.disabled = false
+        }
+    })
+    inputCalculatorMove.addEventListener("change", (e) => {
+        if(e.target.checked) {
+            document.body.addEventListener("mousedown", calcMouseDown)
+
+            inputArrival.disabled = true
+            inputOvertime.disabled = true
+            inputEndtime.disabled = true
+            inputWorktime.disabled = true
+            inputPause.disabled = true
+            inputBackgroundFile.disabled = true
+            inputBackgroundMode.disabled = true
+            inputBackgroundRepeat.disabled = true
+            inputBackgroundReset.disabled = true
+            inputBackgroundMove.disabled = true
+        }
+        else {
+            document.body.removeEventListener("mousedown", calcMouseDown)
+            document.body.removeEventListener("mouseup", calcMouseUp)
+
+            inputArrival.disabled = false
+            inputOvertime.disabled = false
+            inputEndtime.disabled = false
+            inputWorktime.disabled = false
+            inputPause.disabled = false
+            inputBackgroundFile.disabled = false
+            inputBackgroundMode.disabled = false
+            inputBackgroundRepeat.disabled = false
+            inputBackgroundReset.disabled = false
+            
+            if(document.body.style.backgroundImage)
+                inputBackgroundMove.disabled = false
         }
     })
 
@@ -167,8 +205,12 @@
     // ------------------ OnLoad ------------------
     function onLoad() {
         const lastUpdate = localStorage.getItem(LS_LAST_TIME_UPDATE)
+        const calcPos = localStorage.getItem(LS_CALC_POS)
         
         loadBackground()
+
+        if(calcPos)
+                updateCalculatorPos(arrFromIntStr(calcPos))
         
         if(lastUpdate == getISODate(new Date())) {
             const arrival = getDisplayedTime(localStorage.getItem(LS_ARRIVAL))
@@ -186,7 +228,6 @@
             
             if(pausetime && arrival)
                 inputPause.value = `${pausetime.hrs}:${pausetime.min}`
-
 
             if(arrival) {
                 updateEndtime()
@@ -548,6 +589,7 @@
             localStorage.removeItem(LS_BACKGROUND_REPEAT)
             localStorage.removeItem(LS_BACKGROUND_POSITION)
             localStorage.removeItem(LS_BACKGROUND_ZOOM)
+            localStorage.removeItem(LS_CALC_POS)
             deleteBackground()
             location.reload()
         }
@@ -559,6 +601,7 @@
             localStorage.removeItem(LS_BACKGROUND_REPEAT)
             localStorage.removeItem(LS_BACKGROUND_POSITION)
             localStorage.removeItem(LS_BACKGROUND_ZOOM)
+            localStorage.removeItem(LS_CALC_POS)
             location.reload()
         }
     }
@@ -646,6 +689,61 @@
 
         localStorage.setItem(LS_BACKGROUND_ZOOM, newZoom)
         updateBackgroundSize(newZoom)
+    }
+
+    // ------------------ Calculator Movement ------------------
+    function calcMouseDown(e) {
+        mouseStartPos = [e.x, e.y]
+        
+        document.body.addEventListener("mousemove", calcMouseMove)
+        document.body.addEventListener("mouseup", calcMouseUp)
+    }
+
+    function calcMouseMove(e) {
+        const mousePos = [e.x, e.y]
+
+        let lsCalcPos = localStorage.getItem(LS_CALC_POS)
+
+        if(!lsCalcPos) {
+            const defaultPos = [(document.getElementById("part1").offsetWidth / 2 - document.getElementById("frame").offsetWidth / 2) - 20, 20]
+            localStorage.setItem(LS_CALC_POS, defaultPos)
+            lsCalcPos = defaultPos
+        }
+        else {
+            lsCalcPos = arrFromIntStr(lsCalcPos)
+        }
+
+        let posAfterMove = [mousePos[0] - mouseStartPos[0] + lsCalcPos[0], mousePos[1] - mouseStartPos[1] + lsCalcPos[1]]
+
+        const maxLeft = document.getElementById("part1").offsetWidth - document.getElementById("frame").offsetWidth
+        const maxTop = document.getElementById("part1").offsetHeight - document.getElementById("frame").offsetHeight
+
+        if(posAfterMove[0] < 0)
+            posAfterMove[0] = 0
+        else if(posAfterMove[0] > maxLeft)
+            posAfterMove[0] = maxLeft
+
+        if(posAfterMove[1] < 0)
+            posAfterMove[1] = 0
+        else if(posAfterMove[1] > maxTop)
+            posAfterMove[1] = maxTop
+
+        updateCalculatorPos(posAfterMove)
+    }
+
+    function calcMouseUp(e) {
+        document.body.removeEventListener("mousemove", calcMouseMove)
+        
+        let posStr = `${document.getElementById("frame").style.marginLeft}, ${document.getElementById("frame").style.marginTop}`
+
+        posStr = posStr.replaceAll(`px`, ``)
+
+        localStorage.setItem(LS_CALC_POS, posStr)
+    }
+
+    function updateCalculatorPos(pos) {
+        document.getElementById("frame").style.marginLeft = `${pos[0]}px`
+        document.getElementById("frame").style.marginTop = `${pos[1]}px`
     }
 
     // ------------------ Time ------------------
@@ -934,6 +1032,10 @@
         background-color: rgba(0, 0, 0, 0);
         padding-top: 30px;
         margin: 0;
+        padding: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
     }
 
     #part2 {
@@ -988,7 +1090,7 @@
         width: 178px;
     }
 
-    #cbxMoveBackground {
+    #cbxMoveBackground, #cbxMoveCalculator {
         width: 15px;
         height: 15px;
         margin: 7px 5px 0px 0px;
@@ -1077,7 +1179,8 @@
         margin-left: auto;
         margin-right: auto;
         border-radius: 50px;
-        background-color: rgba(255, 255, 255, .5)
+        background-color: rgba(255, 255, 255, .5);
+        margin-top: 20px;
     }
 
     header#title {
@@ -1211,17 +1314,8 @@
         margin: 0
     }
 
-    a#logoclick {
-        color: #3b3b3b;
-        text-decoration: none
-    }
-
     header#title {
         transition: background-color .2s ease-in
-    }
-
-    header#title:hover {
-        background-color: rgba(230, 230, 230, .5)
     }
 
     footer#mainfooter {
