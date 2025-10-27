@@ -835,6 +835,26 @@
                 sec: `${String(seconds).padStart(2, `0`)}`
             }
         }
+        else {
+            sec *= -1
+            let seconds
+            let minutes = Math.floor(sec / 60)
+            const hours = Math.floor(minutes / 60)
+
+            if(minutes > 0)
+                seconds = sec % (minutes * 60)
+            else
+                seconds = sec
+
+            if(hours > 0)
+                minutes = minutes % (hours * 60)
+
+            return {
+                hrs: `-${String(hours).padStart(2, `0`)}`,
+                min: `${String(minutes).padStart(2, `0`)}`,
+                sec: `${String(seconds).padStart(2, `0`)}`
+            }
+        }
     }
 
     // ------------------ Timer ------------------
@@ -844,16 +864,16 @@
         const secsEndtime = getTotalMinutes(inputEndtime.value) * 60
 
         timer = setInterval(() => {
-            const secsNow = getTotalSeconds(getISOTime(new Date()))
+            const secsNow = getTotalSeconds(new Date().toLocaleTimeString(`de-DE`))
             let percent
 
-            const diff = secsEndtime - secsNow
+            let diff = secsEndtime - secsNow
 
             if(diff > 0) {
                 const timeDiff = getDisplayedTimeS(diff)
                 const showedString = `${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
                 percent = getPercent(secsNow - localStorage.getItem(LS_ARRIVAL) * 60, getTotalMinutes(inputEndtime.value) * 60 - localStorage.getItem(LS_ARRIVAL) * 60)
-                
+
                 countdownElement.innerHTML = showedString
                 overtimeCounter.innerHTML = ``
                 document.title = `${showedString} | Arbeitszeitrechner`
@@ -863,10 +883,10 @@
                 countdownElement.innerHTML = `Feierabend!`
                 percent = 100
 
-                let overtime = calcOvertimeCounter(secsNow, -diff)
+                if(localStorage.getItem(LS_OVERTIME) * 1 < 0)
+                    diff -= localStorage.getItem(LS_OVERTIME) * 60
 
-                if(overtime < 0)
-                    overtime = 0
+                let overtime = calcOvertimeCounter(secsNow, -diff)
 
                 const timeDiff = getDisplayedTimeS(overtime)
                 
