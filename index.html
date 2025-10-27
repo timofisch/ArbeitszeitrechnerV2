@@ -883,8 +883,7 @@
                 countdownElement.innerHTML = `Feierabend!`
                 percent = 100
 
-                if(localStorage.getItem(LS_OVERTIME) * 1 < 0)
-                    diff -= localStorage.getItem(LS_OVERTIME) * 60
+                diff -= localStorage.getItem(LS_OVERTIME) * 60
 
                 let overtime = calcOvertimeCounter(secsNow, -diff)
 
