@@ -696,6 +696,11 @@
     function calcMouseMove(e) {
         const mousePos = [e.x, e.y]
 
+        if(e.buttons <= 0) {
+            calcMouseUp()
+            return
+        }
+
         let lsCalcPos = localStorage.getItem(LS_CALC_POS)
 
         if(!lsCalcPos) {
