@@ -115,6 +115,7 @@
     const LS_CALC_POS = "calculator_position"
     
     // ------------------ HTML Elements ------------------
+    const wrapper = document.getElementById("wrapper")
     const wrapperBackSettings = document.getElementById(`backgroundSettings`)
     const wrapperCalc = document.getElementById(`calculator`)
 
@@ -135,6 +136,7 @@
     const inputBackgroundMove = document.getElementById("cbxMoveBackground")
 
     const inputCalculatorMove = document.getElementById("cbxMoveCalculator")
+    const buttonResetCalcPos = document.getElementById(`resetCalcPos`)
 
     const progressbar = document.getElementById("progressbar")
     const progressNumber = document.getElementById("progressNumber")
@@ -236,6 +238,7 @@
         wrapperCalc.style.display = ``
     })
 
+    buttonResetCalcPos.addEventListener(`click`, resetCalculatorPos)
     // ------------------ Variables ------------------
     let timer, mouseStartPos
 
@@ -785,8 +788,22 @@
     }
 
     function updateCalculatorPos(pos) {
-        document.getElementById("wrapper").style.marginLeft = `${pos[0]}px`
-        document.getElementById("wrapper").style.marginTop = `${pos[1]}px`
+        if(pos == "auto") {
+            wrapper.style.marginTop = `30px`
+            wrapper.style.marginLeft = `${document.body.offsetWidth / 2 - wrapper.offsetWidth / 2}px`
+        }
+        else {
+            wrapper.style.marginLeft = `${pos[0]}px`
+            wrapper.style.marginTop = `${pos[1]}px`
+        }
+    }
+
+    function resetCalculatorPos() {
+        if(confirm(`Möchtest du wirklich die Position des Rechners zurücksetzen?`)) {
+            localStorage.removeItem(LS_CALC_POS)
+
+            updateCalculatorPos("auto")
+        }
     }
 
     // ------------------ Time ------------------
