@@ -4,69 +4,93 @@
 <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,300' rel='stylesheet' type='text/css'>
 
 <body>
-	<div id=wrapper1>
-		<section id=part1>
-			<div id=frame>
-				<header id=title><h1>Arbeitszeitrechner</h1></header>
-				<section id=form>
-					<div class=table>
-						<div class=tableRow>
-							<p>Ankunftszeit<p><input autocomplete="off" id=arrival name=arrival placeholder=hhmm/hmm/hh/h></p>
-						</div>
-						<div class=tableRow>
-							<p>Geplante Überstunden<p><input autocomplete="off" id=overtime name=overtime placeholder=(-)hhmm/(-)hmm/(-)mm></p>
-						</div>
-						<div class=tableRow>
-							<p>Feierabend<p><input autocomplete="off" id=endtime name=endtime placeholder=hhmm/hmm/hh/h></p>
-						</div>
-						<div class=tableRow>
-							<p>Arbeitszeit<p><input autocomplete="off" id=worktime name=worktime placeholder=hhmm/hmm/hh/h></p>
-						</div>
-                        <div class=tableRow>
-							<p>Pause<p><input autocomplete="off" id=pausetime name=pausetime placeholder=hhmm/hmm/mm></p>
-						</div>
-					</div>
-					<div class=tableRow id=backgroundControl>
-						<div class=child>
-							<label for="inputFileToLoad" class="custom-file-upload">
-								Hintergrundbild wählen
-							</label>
-							<input id="inputFileToLoad" type="file" accept="image/*"/>
-						</div>
-						<div>
-							<select id=backgroundMode class="custom-file-upload child">
-								<option value="auto">Auto</option>
-								<option value="cover">Cover</option>
-								<option value="contain">Contain</option>
-                                <option value="custom">Custom</option>
-							</select>
-							<select id=backgroundRepeat class="custom-file-upload child">
-								<option value="no-repeat">No repeat</option>
-								<option value="repeat">Repeat</option>
-								<option value="repeat-x">Repeat-X</option>
-								<option value="repeat-y">Repeat-Y</option>
-							</select>
-						</div>
-						<div class="child">
-                            <button class="custom-file-upload" id="resetBackground">Hintergrund zurücksetzen</button>
-                        </div>
-                        <div class="child" style="grid-column: 1; grid-row: 2;">
-                            <label><input id="cbxMoveCalculator" type="checkbox">Rechner bewegen</label>
-                        </div>
-                        <div class="child" style="grid-column: 2; grid-row: 2;">
-                            <label><input id="cbxMoveBackground" type="checkbox" disabled>Hintergrund bewegen</label>
-                        </div>
-                        <div class="child" style="grid-column: 3; grid-row: 2;">
-                            <button class="custom-file-upload" id="resetBackSettings">Einstellungen löschen</button>
-                        </div>
-					</div>
-					<p id=countdown>00:00:00<p id=overtimecounter></p></p>
-                    <p><a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a></p>
-				</section>
-			</div><span id=progressbar></span>
-			<div id=progressnumber><span id="progressNumber" class=blur></span></div>
-		</section>
+	<div id=wrapper>
+		<header id=title><h1>Arbeitszeitrechner</h1></header>
+
+        <div class="main-content-parent">
+            <div id="calculator" class="main-content">
+                <div class="table-row">
+                    <p>Ankunftszeit<p><input autocomplete="off" id=arrival name=arrival placeholder="hhmm/hmm/hh/h" class="customInput">
+                </div>
+                <div class="table-row">
+                    <p>Geplante Überstunden<p><input autocomplete="off" id=overtime name=overtime placeholder="(-)hhmm/(-)hmm/(-)mm" class="customInput">
+                </div>
+                <div class="table-row">
+                    <p>Feierabend<p><input autocomplete="off" id=endtime name=endtime placeholder="hhmm/hmm/hh/h" class="customInput">
+                </div>
+                <div class="table-row">
+                    <p>Arbeitszeit<p><input autocomplete="off" id=worktime name=worktime placeholder="hhmm/hmm/hh/h" class="customInput">
+                </div>
+                <div class="table-row">
+                    <p>Pause<p><input autocomplete="off" id=pausetime name=pausetime placeholder="hhmm/hmm/mm" class="customInput">
+                </div>
+                <div class="table-row">
+                    <p><label>Rechner bewegen</label><input id="cbxMoveCalculator" type="checkbox"></p>
+                    <p><button class="customInput" id="resetCalcPos">Rechnerposition zurücksetzen</button></p>
+                </div>
+                <div class="table-row">
+                    <p></p>
+                    <p><button class="customInput" id="openBackgroundSettings">Öffne Hintergrundeinstellungen</button></p>
+                </div>
+            </div>
+
+            <div id="backgroundSettings" class="main-content" style="display: none;">
+                <div class="table-row">
+                    <p></p>
+                    <p>
+                        <label for="inputFileToLoad" class="customInput">
+                            Hintergrundbild wählen
+                        </label>
+                        <input id="inputFileToLoad" type="file" accept="image/*"/>
+                    </p>
+                </div>
+                <div class="table-row">
+                    <p></p>
+                    <p>
+                        <select id=backgroundMode class="customInput">
+                            <option value="cover">Cover</option>
+                            <option value="contain">Contain</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </p>
+                </div>
+                <div class="table-row">
+                    <p>Wiederholung des Bildes</p>
+                    <p>
+                        <select id=backgroundRepeat class="customInput">
+                            <option value="no-repeat">No repeat</option>
+                            <option value="repeat">Repeat</option>
+                            <option value="repeat-x">Repeat-X</option>
+                            <option value="repeat-y">Repeat-Y</option>
+                        </select>
+                    </p>
+                </div>
+                <div class="table-row">
+                    <p></p>
+                    <p><label class="customInput"><input id="cbxMoveBackground" type="checkbox" disabled>Hintergrund bewegen</label></p>
+                </div>
+                <div class="table-row">
+                    <p></p>
+                    <p><button class="customInput" id="resetBackground">Hintergrund zurücksetzen</button></p>
+                </div>
+                <div class="table-row">
+                    <p></p>
+                    <p><button class="customInput" id="resetBackSettings">Hintergrundeinstellungen löschen</button></p>
+                </div>
+                <div class="table-row">
+                    <p></p>
+                    <p><button class="customInput" id="closeBackgroundSettings">Schließe Hintergrundeinstellungen</button></p>
+                </div>
+            </div>
+        </div>
+        
+        <p id=countdown>00:00:00</p>
+        <p id=overtimecounter>Überstunden: 00:00:00</p>
+        <p><a href="mailto:timon.fischer@f-i.de?subject=Arbeitszeitrechner Bug-Meldung - Betreff nicht bearbeiten&body=[Bug Beschreibung]" id="reportBug">Bug melden</a></p>
 	</div>
+
+    <span id=progressbar></span>
+    <div id=progressnumber><span id="progressNumber" class=blur></span></div>
 </body>
 
 <script>
@@ -91,6 +115,12 @@
     const LS_CALC_POS = "calculator_position"
     
     // ------------------ HTML Elements ------------------
+    const wrapperBackSettings = document.getElementById(`backgroundSettings`)
+    const wrapperCalc = document.getElementById(`calculator`)
+
+    const openBackSettings = document.getElementById(`openBackgroundSettings`)
+    const closeBackSettings = document.getElementById(`closeBackgroundSettings`)
+    
     const inputArrival = document.getElementById("arrival")
     const inputOvertime = document.getElementById("overtime")
     const inputPause = document.getElementById("pausetime")
@@ -141,6 +171,7 @@
             inputBackgroundRepeat.disabled = true
             inputBackgroundReset.disabled = true
             inputCalculatorMove.disabled = true
+            closeBackSettings.disabled = true
         }
         else {
             document.body.removeEventListener("mousedown", backMouseDown)
@@ -157,6 +188,7 @@
             inputBackgroundRepeat.disabled = false
             inputBackgroundReset.disabled = false
             inputCalculatorMove.disabled = false
+            closeBackSettings.disabled = false
         }
     })
     inputCalculatorMove.addEventListener("change", (e) => {
@@ -173,6 +205,7 @@
             inputBackgroundRepeat.disabled = true
             inputBackgroundReset.disabled = true
             inputBackgroundMove.disabled = true
+            openBackSettings.disabled = true
         }
         else {
             document.body.removeEventListener("mousedown", calcMouseDown)
@@ -187,10 +220,20 @@
             inputBackgroundMode.disabled = false
             inputBackgroundRepeat.disabled = false
             inputBackgroundReset.disabled = false
+            openBackSettings.disabled = false
             
             if(document.body.style.backgroundImage)
                 inputBackgroundMove.disabled = false
         }
+    })
+
+    openBackSettings.addEventListener(`click`, () => {
+        wrapperCalc.style.display = `none`
+        wrapperBackSettings.style.display = ``
+    })
+    closeBackSettings.addEventListener(`click`, () => {
+        wrapperBackSettings.style.display = `none`
+        wrapperCalc.style.display = ``
     })
 
     // ------------------ Variables ------------------
@@ -466,7 +509,8 @@
         }
 
         clearInterval(timer)
-        overtimeCounter.innerHTML = ``
+        overtimeCounter.innerHTML = `Überstunden: 00:00:00`
+        overtimeCounter.style.visibility = `hidden`
         countdownElement.innerHTML = `00:00:00`
         document.title = `Arbeitszeitrechner`
         progressNumber.innerHTML = ``
@@ -704,7 +748,7 @@
         let lsCalcPos = localStorage.getItem(LS_CALC_POS)
 
         if(!lsCalcPos) {
-            const defaultPos = [(document.getElementById("part1").offsetWidth / 2 - document.getElementById("frame").offsetWidth / 2) - 20, 20]
+            const defaultPos = [(document.body.offsetWidth / 2 - document.getElementById("wrapper").offsetWidth / 2) - 20, 20]
             localStorage.setItem(LS_CALC_POS, defaultPos)
             lsCalcPos = defaultPos
         }
@@ -714,8 +758,8 @@
 
         let posAfterMove = [mousePos[0] - mouseStartPos[0] + lsCalcPos[0], mousePos[1] - mouseStartPos[1] + lsCalcPos[1]]
 
-        const maxLeft = document.getElementById("part1").offsetWidth - document.getElementById("frame").offsetWidth
-        const maxTop = document.getElementById("part1").offsetHeight - document.getElementById("frame").offsetHeight
+        const maxLeft = document.body.offsetWidth - document.getElementById("wrapper").offsetWidth
+        const maxTop = document.body.offsetHeight - document.getElementById("wrapper").offsetHeight
 
         if(posAfterMove[0] < 0)
             posAfterMove[0] = 0
@@ -733,7 +777,7 @@
     function calcMouseUp(e) {
         document.body.removeEventListener("mousemove", calcMouseMove)
         
-        let posStr = `${document.getElementById("frame").style.marginLeft}, ${document.getElementById("frame").style.marginTop}`
+        let posStr = `${document.getElementById("wrapper").style.marginLeft}, ${document.getElementById("wrapper").style.marginTop}`
 
         posStr = posStr.replaceAll(`px`, ``)
 
@@ -741,8 +785,8 @@
     }
 
     function updateCalculatorPos(pos) {
-        document.getElementById("frame").style.marginLeft = `${pos[0]}px`
-        document.getElementById("frame").style.marginTop = `${pos[1]}px`
+        document.getElementById("wrapper").style.marginLeft = `${pos[0]}px`
+        document.getElementById("wrapper").style.marginTop = `${pos[1]}px`
     }
 
     // ------------------ Time ------------------
@@ -880,7 +924,8 @@
                 percent = getPercent(secsNow - localStorage.getItem(LS_ARRIVAL) * 60, getTotalMinutes(inputEndtime.value) * 60 - localStorage.getItem(LS_ARRIVAL) * 60)
 
                 countdownElement.innerHTML = showedString
-                overtimeCounter.innerHTML = ``
+                overtimeCounter.innerHTML = `Überstunden: 00:00:00`
+                overtimeCounter.style.visibility = `hidden`
                 document.title = `${showedString} | Arbeitszeitrechner`
             }
             else {
@@ -894,8 +939,10 @@
 
                 const timeDiff = getDisplayedTimeS(overtime)
                 
-                if(!isNaN(overtime))
+                if(!isNaN(overtime)) {
                     overtimeCounter.innerHTML = `Überstunden: ${timeDiff.hrs}:${timeDiff.min}:${timeDiff.sec}`
+                    overtimeCounter.style.visibility = `visible`
+                }
             }
 
             progressbar.style.visibility = `visible`
@@ -1034,36 +1081,18 @@
         margin: 0;
     }
 
-    #wrapper1 {
+    #wrapper {
         background-repeat: no-repeat;
         background-attachment: fixed;
         background-position: center top;
+        position: absolute;
         background-size: 100% 100%;
-        margin: 0;
-        padding: 0;
-        position: absolute;
-        width: 100%;
-        height: 100%;
-    }
-
-    #part1 {
-        background-color: rgba(0, 0, 0, 0);
-        padding-top: 30px;
-        margin: 0;
-        padding: 0;
-        position: absolute;
-        width: 100%;
-        height: 100%;
-    }
-
-    #part2 {
-        font-family: "Open Sans";
-        font-size: 150px;
-        color: #eee;
-        line-height: 1em;
-        margin-top: -50px;
-        padding: 0;
-        height: 100%
+        margin: 30px 0 0;
+        margin-inline: calc(50% - 300px);
+        width: 600px;
+        height: 600px;
+        border-radius: 50px;
+        background-color: rgba(255, 255, 255, .5);
     }
 
     #reportBug {
@@ -1071,59 +1100,60 @@
         text-align: center;
         margin-left: calc(50% - 38.7px);
     }
-	
-	#backgroundControl {
-		display: grid;
-		grid-template-columns: 0.95fr 1fr 0.95fr;
-        grid-template-rows: 1fr 1fr;
-		width: 620px;
-		height: 33px;
-        margin-top: 2px;
-	}
-	
-	#backgroundControl .child {
-		width: 180px;
-        height: 33px;
-		text-align: center;
-        margin-left: auto;
-        margin-right: auto;
-	}
-	
-	#backgroundControl select.child {
-        height: 33px;
-		text-align: center;
-	}
-
-    #backgroundControl select.child:first-child {
-        width: 98px;
-	}
-
-    #backgroundControl select.child:last-child {
-        width: 110px;
-	}
 
     #resetBackground, #resetBackSettings {
         color: #e50000;
-        height: 33px;
-        width: 178px;
     }
 
     #cbxMoveBackground, #cbxMoveCalculator {
         width: 15px;
         height: 15px;
-        margin: 7px 5px 0px 0px;
+        margin: 0px 5px 1px 0px;
+    }
+
+    #cbxMoveCalculator {
+        width: 15px;
+        height: 15px;
+        margin: 0px 0px 1px 5px;
     }
 	
 	input[type="file"] {
         display: none;
     }
 
-    .custom-file-upload {
+    input[type="checkbox"] {
+        vertical-align: middle;
+    }
+
+    .customInput {
         border: 1px solid #000000;
 		background-color: rgba(200, 200, 200, 0.5);
         display: inline-block;
         padding: 6px 12px;
         cursor: pointer;
+        width: 290px;
+    }
+
+    label.customInput {
+        width: 264px;
+    }
+
+    input.customInput {
+        background-color: var(--inputBack);
+        border: 0;
+        padding: 6px;
+        border-radius: 5px;
+        width: 278px;
+    }
+
+    .customInput:focus,
+    .customInput:hover {
+        border: 1px solid rgba(255, 255, 255, .8);
+        box-shadow: 0 0 5px rgba(255, 255, 255, .8) inset
+    }
+
+    .calcPosSettings {
+        display: inline-block;
     }
 
     @keyframes endarken {
@@ -1172,38 +1202,9 @@
         animation: pulse 2s infinite alternate
     }
 
-    #part2 {
-        background-color: #333;
-        height: 1000px
-    }
-
-    input {
-        background-color: var(--inputBack);
-        border: 0;
-        padding: 6px;
-        width: 290px;
-        border-radius: 5px
-    }
-
-    input:focus,
-    input:hover {
-        padding: 5px;
-        border: 1px solid rgba(255, 255, 255, .8);
-        box-shadow: 0 0 5px rgba(255, 255, 255, .8) inset
-    }
-
-    #frame {
-        width: 700px;
-        margin-left: auto;
-        margin-right: auto;
-        border-radius: 50px;
-        background-color: rgba(255, 255, 255, .5);
-        margin-top: 20px;
-    }
-
     header#title {
         color: #3b3b3b;
-        padding: 30px 10px 30px 10px;
+        padding: 20px 10px;
         text-align: center;
         font-family: "Open Sans"
     }
@@ -1223,14 +1224,13 @@
 
     #progressNumber {
         position: absolute;
-        top: 93%;
-        left: 50%;
-        right: 50%;
+        bottom: 20px;
         color: rgba(255, 255, 255, .5);
         display: block;
         font-size: 36px;
         font-family: "Open Sans";
-        font-weight: 300
+        font-weight: 300;
+        margin-inline: calc(50% - 45px);
     }
 
     .blur {
@@ -1288,37 +1288,45 @@
         font-size: 90%
     }
 
-    .table {
-        margin-top: 20px;
-        display: table
-    }
-
-    .table:hover {
-        max-height: 100px
-    }
-
     .fadeOut {
         max-height: 0
     }
 
-    .tableRow {
-        display: table-row;
-        height: 32px
+    .main-content-parent {
+        height: 245px;
     }
 
-    .tableRow p {
+    .main-content {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(7, 35px);;
+    }
+
+    .table-row {
+        display: grid;
+        grid-template-columns: 2.1fr 4fr;
+        grid-template-rows: 1fr;
+        align-items: center;
+    }
+
+    .table-row p {
         display: table-cell;
-        vertical-align: top;
-        padding: 3px
+        vertical-align: middle;
+        padding: 3px;
     }
 
-    .tableRow p:first-child {
-        text-align: right
+    .table-row p:first-child {
+        text-align: right;
     }
 
-    .tableRow p:nth-child(2) {
+    .table-row p:nth-child(2) {
         padding-left: 15px;
-        width: 300px
+        width: 300px;
+    }
+
+    p {
+        margin: 0;
+        padding: 0;
     }
 
     h1 {
@@ -1346,10 +1354,9 @@
         font-family: "Open Sans", sans-serif;
         font-weight: 300;
         color: var(--red);
-        margin-left: auto;
-        margin-right: auto;
         text-align: center;
-        cursor: default
+        cursor: default;
+        margin: 35px auto 35px auto;
     }
 
     #overtimecounter {
@@ -1357,10 +1364,10 @@
         font-family: "Open Sans", sans-serif;
         font-weight: 300;
         color: var(--red);
-        margin-left: auto;
-        margin-right: auto;
         text-align: center;
-        cursor: default
+        cursor: default;
+        margin: 0px auto 25px auto;
+        visibility: hidden;
     }
 
     .helptext {
